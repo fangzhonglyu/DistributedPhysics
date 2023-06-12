@@ -495,6 +495,38 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
 #pragma mark -
 #pragma mark Physics Handling
 
+#if USING_PHYSICS
+void GameScene::preUpdate(float dt) {
+    _input.update(dt);
+
+    // Process the toggled key commands
+    if (_input.didDebug()) { setDebug(!isDebug()); }
+    if (_input.didReset()) { reset(); }
+    if (_input.didExit()) {
+        CULog("Shutting down");
+        Application::get()->quit();
+    }
+
+    // Apply the force to the rocket
+    _rocket->setFX(_input.getHorizontal() * _rocket->getThrust());
+    _rocket->setFY(_input.getVertical() * _rocket->getThrust());
+    _rocket->applyForce();
+
+    // Animate the three burners
+    updateBurner(RocketModel::Burner::MAIN, _rocket->getFY() > 1);
+    updateBurner(RocketModel::Burner::LEFT, _rocket->getFX() > 1);
+    updateBurner(RocketModel::Burner::RIGHT, _rocket->getFX() < -1);
+}
+
+void GameScene::postUpdate(float dt) {
+    //Nothing to do now
+}
+
+void GameScene::fixedUpdate() {
+    _world->update(FIXED_TIMESTEP_S);
+}
+
+#else
 /**
  * Executes the core gameplay loop of this world.
  *
@@ -530,6 +562,7 @@ void GameScene::update(float dt) {
     // TODO: Implement https://gafferongames.com/post/fix_your_timestep/
     _world->update(dt);
 }
+#endif
 
 /**
  * Updates that animation for a single burner

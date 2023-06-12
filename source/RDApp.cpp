@@ -115,6 +115,35 @@ void RocketApp::onResume() {
 #pragma mark -
 #pragma mark Application Loop
 
+#if USING_PHYSICS
+
+void RocketApp::preUpdate(float timestep){
+    if (!_loaded && _loading.isActive()) {
+        _loading.update(0.01f);
+    }
+    else if (!_loaded) {
+        _loading.dispose(); // Disables the input listeners in this mode
+        _gameplay.init(_assets);
+        _loaded = true;
+    }
+    
+    if (_loaded) {
+        _gameplay.preUpdate(timestep);
+    }
+}
+
+void RocketApp::postUpdate(float timestep) {
+    if (_loaded) {
+        _gameplay.postUpdate(timestep);
+    }
+}
+
+void RocketApp::fixedUpdate() {
+    if (_loaded) {
+        _gameplay.fixedUpdate();
+    }
+}
+#else
 /**
  * The method called to update the application data.
  *
@@ -129,14 +158,18 @@ void RocketApp::onResume() {
 void RocketApp::update(float timestep) {
     if (!_loaded && _loading.isActive()) {
         _loading.update(0.01f);
-    } else if (!_loaded) {
+    }
+    else if (!_loaded) {
         _loading.dispose(); // Disables the input listeners in this mode
         _gameplay.init(_assets);
         _loaded = true;
-    } else {
+    }
+    else {
         _gameplay.update(timestep);
     }
 }
+#endif
+
 
 /**
  * The method called to draw the application to the screen.

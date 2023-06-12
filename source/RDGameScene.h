@@ -232,6 +232,12 @@ public:
     
 #pragma mark -
 #pragma mark Gameplay Handling
+#if USING_PHYSICS
+    virtual void preUpdate(float timestep);
+    virtual void postUpdate(float timestep);
+    virtual void fixedUpdate();
+
+#else
     /**
      * The method called to update the game mode.
      *
@@ -240,7 +246,8 @@ public:
      * @param timestep  The amount of time (in seconds) since the last frame
      */
     void update(float timestep);
-    
+#endif 
+
     /**
      * Updates that animation for a single burner
      *

@@ -113,6 +113,15 @@ public:
     
     
 #pragma mark Application Loop
+    
+
+#if USING_PHYSICS
+    virtual void preUpdate(float timestep) override;
+
+    virtual void postUpdate(float timestep) override;
+
+    virtual void fixedUpdate() override;
+#else
     /**
      * The method called to update the application data.
      *
@@ -125,7 +134,8 @@ public:
      * @param timestep  The amount of time (in seconds) since the last frame
      */
     virtual void update(float timestep) override;
-    
+#endif
+
     /**
      * The method called to draw the application to the screen.
      *

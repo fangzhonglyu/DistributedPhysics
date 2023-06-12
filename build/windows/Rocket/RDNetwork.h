@@ -11,6 +11,8 @@
 #define __RD_NETWORK_H__
 #include <cugl/cugl.h>
 
+using namespace cugl;
+
 class NetworkController {
 public:
     /**
@@ -54,7 +56,7 @@ public:
      * This constructor does not allocate any objects or start the game.
      * This allows us to use the object without a heap pointer.
      */
-    NetworkController() {}
+    NetworkController();
 
     /**
      * Disposes of all (non-static) resources allocated to this controller.
