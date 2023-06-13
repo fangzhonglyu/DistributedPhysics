@@ -403,7 +403,7 @@ void GameScene::populate() {
     addObstacle(wallobj,sprite);  // All walls share the same texture
     
 #pragma mark : Crates
-    std::srand((int)std::time(0));
+    std::srand(0xdeadbeef);
     for (int ii = 0; ii < 15; ii++) {
         // Pick a crate and random and generate the key
         int indx = (std::rand() % 2 == 0 ? 2 : 1);
