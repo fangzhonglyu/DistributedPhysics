@@ -24,6 +24,8 @@ using namespace cugl;
 #define DEBUG_KEY KeyCode::D
 /** The key for exitting the game */
 #define EXIT_KEY  KeyCode::ESCAPE
+/** The fire key for firing a crate */
+#define FIRE_KEY  KeyCode::SPACE
 
 /** How fast a double click must be in milliseconds */
 #define EVENT_DOUBLE_CLICK  400
@@ -55,6 +57,7 @@ _keyDown(false),
 _keyReset(false),
 _keyDebug(false),
 _keyExit(false),
+_fired(false),
 _horizontal(0.0f),
 _vertical(0.0f) {
 }
@@ -134,6 +137,7 @@ void RocketInput::update(float dt) {
     _keyReset  = keys->keyPressed(RESET_KEY);
     _keyDebug  = keys->keyPressed(DEBUG_KEY);
     _keyExit   = keys->keyPressed(EXIT_KEY);
+    _keyfired  = keys->keyPressed(FIRE_KEY);
     
     left = keys->keyDown(KeyCode::ARROW_LEFT);
     rght = keys->keyDown(KeyCode::ARROW_RIGHT);
@@ -150,11 +154,13 @@ void RocketInput::update(float dt) {
     left |= (pitch > EVENT_ACCEL_THRESH);
     rght |= (pitch < -EVENT_ACCEL_THRESH);
     up   |= _keyUp;
+    
 #endif
 
     _resetPressed = _keyReset;
     _debugPressed = _keyDebug;
     _exitPressed  = _keyExit;
+    _fired        = _keyFired;
     
     // Directional controls
     _horizontal = 0.0f;
@@ -179,6 +185,7 @@ void RocketInput::update(float dt) {
     _keyDebug = false;
     _keyReset = false;
     _keyDebug = false;
+    _keyFired = false;
 #endif
 }
 
@@ -189,6 +196,7 @@ void RocketInput::clear() {
     _resetPressed = false;
     _debugPressed = false;
     _exitPressed  = false;
+    _fired = false;
     
     _horizontal = 0.0f;
     _vertical   = 0.0f;
@@ -208,7 +216,7 @@ void RocketInput::clear() {
 void RocketInput::touchBeganCB(const cugl::TouchEvent& event, bool focus) {
     // All touches correspond to key up
     _keyUp = true;
-     
+    _keyFired = false;
     // Update the touch location for later gestures
     _timestamp = event.timestamp;
     _dtouch = event.position;
@@ -224,8 +232,13 @@ void RocketInput::touchEndedCB(const cugl::TouchEvent& event, bool focus) {
     // Gesture has ended.  Give it meaning.
     Vec2 diff = event.position-_dtouch;
     bool fast = (event.timestamp.ellapsedMillis(_timestamp) < EVENT_SWIPE_TIME);
-    _keyReset = fast && diff.x < -EVENT_SWIPE_LENGTH;
-    _keyExit  = fast && diff.x > EVENT_SWIPE_LENGTH;
-    _keyDebug = fast && diff.y > EVENT_SWIPE_LENGTH;
+    if(abs(diff.x)>EVENT_SWIPE_LENGTH || abs(diff.y)>EVENT_SWIPE_LENGTH){
+        _keyReset = fast && diff.x < -EVENT_SWIPE_LENGTH;
+        _keyExit  = fast && diff.x > EVENT_SWIPE_LENGTH;
+        _keyDebug = fast && diff.y > EVENT_SWIPE_LENGTH;
+    }
+    else{
+        _keyFired = true;
+    }
     _keyUp = false;
 }

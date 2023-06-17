@@ -284,6 +284,7 @@ void GameScene::dispose() {
  * This method disposes of the world and creates a new one.
  */
 void GameScene::reset() {
+    CULog("reset");
     _world->clear();
     _worldnode->removeAllChildren();
     _debugnode->removeAllChildren();
@@ -505,6 +506,10 @@ void GameScene::preUpdate(float dt) {
     if (_input.didExit()) {
         CULog("Shutting down");
         Application::get()->quit();
+    }
+    
+    if (_input.didFire()) {
+        _updateCounter
     }
 
     // Apply the force to the rocket

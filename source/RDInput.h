@@ -47,6 +47,8 @@ private:
     bool  _keyDebug;
     /** Whether the exit key is down */
     bool  _keyExit;
+    /** Whether the key for fired was down */
+    bool  _keyFired;
 
     // TOUCH SUPPORT
     /** The initial touch location for the current gesture */
@@ -66,6 +68,8 @@ protected:
     float _horizontal;
     /** How much did we move vertically? */
     float _vertical;
+    /** Whether the fire action was chosen. */
+    bool _fired;
     
 public:
 #pragma mark -
@@ -165,6 +169,14 @@ public:
      * @return true if the exit button was pressed.
      */
     bool didExit() const { return _exitPressed; }
+    
+    
+    /**
+     * Returns true if the fire button was pressed.
+     *
+     * @return true if the fire button was pressed.
+     */
+    bool didFire() const { return _fired; }
     
     
 #pragma mark -
