@@ -27,6 +27,9 @@
             "file":     "textures/flames-left.png"
         }
 	},
+    "jsons": {
+        "server": "json/server.json"
+    },
     "sounds": {
         "bump": {
             "type":     "sample",

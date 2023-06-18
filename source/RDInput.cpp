@@ -137,7 +137,7 @@ void RocketInput::update(float dt) {
     _keyReset  = keys->keyPressed(RESET_KEY);
     _keyDebug  = keys->keyPressed(DEBUG_KEY);
     _keyExit   = keys->keyPressed(EXIT_KEY);
-    _keyfired  = keys->keyPressed(FIRE_KEY);
+    _keyFired  = keys->keyPressed(FIRE_KEY);
     
     left = keys->keyDown(KeyCode::ARROW_LEFT);
     rght = keys->keyDown(KeyCode::ARROW_RIGHT);

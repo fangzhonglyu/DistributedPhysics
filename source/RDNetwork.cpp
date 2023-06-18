@@ -9,6 +9,7 @@
 //
 
 #include "RDNetwork.h"
+#include "NetworkData.h"
 
 using namespace cugl;
 using namespace cugl::net;

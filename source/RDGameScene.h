@@ -71,6 +71,9 @@ protected:
     bool _debug;
     
 #pragma mark Internal Object Management
+    
+    std::shared_ptr<cugl::physics2::BoxObstacle> addCrateAt(cugl::Vec2 pos);
+    
     /**
      * Lays out the game geography.
      *

@@ -75,7 +75,7 @@ float BOXES[] = { 14.5f, 14.25f,
                   10.0f,  3.00f, 13.0f,  3.00f, 16.0f, 3.00f, 19.0f, 3.0f};
 
 /** The initial rocket position */
-float ROCK_POS[] = {24,  4};
+float ROCK_POS[] = { 2, 9 };
 /** The goal door position */
 float GOAL_POS[] = { 6, 12};
 
@@ -293,6 +293,33 @@ void GameScene::reset() {
     populate();
 }
 
+std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
+    // Pick a crate and random and generate the key
+    int indx = (std::rand() % 2 == 0 ? 2 : 1);
+    std::stringstream ss;
+    ss << CRATE_PREFIX << (indx < 10 ? "0" : "" ) << indx;
+
+    // Create the sprite for this crate
+    auto image  = _assets->get<Texture>(ss.str());
+
+    Size boxSize(image->getSize()/_scale);
+    auto crate = physics2::BoxObstacle::alloc(pos,boxSize);
+    crate->setDebugColor(DYNAMIC_COLOR);
+    crate->setName(ss.str());
+    crate->setAngleSnap(0);             // Snap to the nearest degree
+
+    // Set the physics attributes
+    crate->setDensity(CRATE_DENSITY);
+    crate->setFriction(CRATE_FRICTION);
+    crate->setAngularDamping(CRATE_DAMPING);
+    crate->setRestitution(BASIC_RESTITUTION);
+
+    auto sprite = scene2::PolygonNode::allocWithTexture(image);
+    sprite->setAnchor(Vec2::ANCHOR_CENTER);
+    addObstacle(crate,sprite);   // PUT SAME TEXTURES IN SAME LAYER!!!
+    return crate;
+}
+
 /**
  * Lays out the game geography.
  *
@@ -407,30 +434,8 @@ void GameScene::populate() {
     std::srand(0xdeadbeef);
     for (int ii = 0; ii < 15; ii++) {
         // Pick a crate and random and generate the key
-        int indx = (std::rand() % 2 == 0 ? 2 : 1);
-        std::stringstream ss;
-        ss << CRATE_PREFIX << (indx < 10 ? "0" : "" ) << indx;
-
-        // Create the sprite for this crate
-        image  = _assets->get<Texture>(ss.str());
-
         Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
-        Size boxSize(image->getSize()/_scale);
-        auto crate = physics2::BoxObstacle::alloc(boxPos,boxSize);
-        crate->setDebugColor(DYNAMIC_COLOR);
-        crate->setName(ss.str());
-        crate->setAngleSnap(0);             // Snap to the nearest degree
-
-        // Set the physics attributes
-        crate->setDensity(CRATE_DENSITY);
-        crate->setFriction(CRATE_FRICTION);
-        crate->setAngularDamping(CRATE_DAMPING);
-        crate->setRestitution(BASIC_RESTITUTION);
-
-        sprite = scene2::PolygonNode::allocWithTexture(image);
-		sprite->setAnchor(Vec2::ANCHOR_CENTER);
-        addObstacle(crate,sprite);   // PUT SAME TEXTURES IN SAME LAYER!!!
-
+        addCrateAt(boxPos);
     }
 
 #pragma mark : Rocket
@@ -439,7 +444,9 @@ void GameScene::populate() {
     Size rockSize(image->getSize()/_scale);
     
     _rocket = RocketModel::alloc(rockPos,rockSize);
+    _rocket->setBodyType(b2BodyType::b2_staticBody);
     _rocket->setDrawScale(_scale);
+    _rocket->setAngle(-M_PI_2);
     _rocket->setDebugColor(DYNAMIC_COLOR);
     
     auto rocketNode = scene2::PolygonNode::allocWithTexture(image);
@@ -493,6 +500,8 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
 }
 
 
+
+
 #pragma mark -
 #pragma mark Physics Handling
 
@@ -509,7 +518,9 @@ void GameScene::preUpdate(float dt) {
     }
     
     if (_input.didFire()) {
-        _updateCounter
+        Vec2 pos = _rocket->getPosition()+Vec2(0,-2.f);
+        addCrateAt(pos);
+        CULog("Add Crate");
     }
 
     // Apply the force to the rocket
@@ -554,9 +565,10 @@ void GameScene::update(float dt) {
     }
 
     // Apply the force to the rocket
-    _rocket->setFX(_input.getHorizontal() * _rocket->getThrust());
-    _rocket->setFY(_input.getVertical() * _rocket->getThrust());
-    _rocket->applyForce();
+    //_rocket->setFX(_input.getHorizontal() * _rocket->getThrust());
+    //_rocket->setFY(_input.getVertical() * _rocket->getThrust());
+    _rocket->setAngle(_input.getVertical() * _rocket->geThrust() + _rocket->getAngle());
+    //_rocket->applyForce();
 
     // Animate the three burners
     updateBurner(RocketModel::Burner::MAIN,  _rocket->getFY() >  1);
