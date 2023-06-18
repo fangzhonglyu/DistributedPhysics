@@ -332,28 +332,8 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
  * with your serialization loader, which would process a level file.
  */
 void GameScene::populate() {
-
-#pragma mark : Goal door
-    std::shared_ptr<Texture> image = _assets->get<Texture>(GOAL_TEXTURE);
-    
-    // Create obstacle
-    Vec2 goalPos = ((Vec2)GOAL_POS);
-    Size goalSize = image->getSize()/_scale;
-    std::shared_ptr<scene2::PolygonNode> sprite = scene2::PolygonNode::allocWithTexture(image);
-    
-    
-    _goalDoor = physics2::BoxObstacle::alloc(goalPos,goalSize);
-    _goalDoor->setName("door");
-    _goalDoor->setDebugColor(STATIC_COLOR);
-    
-    // Set the physics attributes
-    _goalDoor->setBodyType(b2_staticBody);
-    _goalDoor->setDensity(0.0f);
-    _goalDoor->setFriction(0.0f);
-    _goalDoor->setRestitution(0.0f);
-    _goalDoor->setSensor(true);
-    
-    addObstacle(_goalDoor,sprite); // Put this at the very back
+    std::shared_ptr<Texture> image;
+    std::shared_ptr<scene2::PolygonNode> sprite;
     
 #pragma mark : Wall polygon 1
     // Create ground pieces
@@ -407,29 +387,6 @@ void GameScene::populate() {
     sprite = scene2::PolygonNode::allocWithTexture(image,wall2);
     addObstacle(wallobj,sprite);  // All walls share the same texture
 
-    
-#pragma mark : Wall polygon 3
-    Poly2 wall3(reinterpret_cast<Vec2*>(WALL3),4);
-    triangulator.set(wall3.vertices);
-    triangulator.calculate();
-    wall3.setIndices(triangulator.getTriangulation());
-    triangulator.clear();
-
-    wallobj = physics2::PolygonObstacle::allocWithAnchor(wall3,Vec2::ANCHOR_CENTER);
-    wallobj->setDebugColor(STATIC_COLOR);
-    wallobj->setName(wname);
-
-    // Set the physics attributes
-    wallobj->setBodyType(b2_staticBody);
-    wallobj->setDensity(BASIC_DENSITY);
-    wallobj->setFriction(BASIC_FRICTION);
-    wallobj->setRestitution(BASIC_RESTITUTION);
-
-    // Add the scene graph nodes to this object
-    wall3 *= _scale;
-    sprite = scene2::PolygonNode::allocWithTexture(image,wall3);
-    addObstacle(wallobj,sprite);  // All walls share the same texture
-    
 #pragma mark : Crates
     std::srand(0xdeadbeef);
     for (int ii = 0; ii < 15; ii++) {
@@ -448,20 +405,11 @@ void GameScene::populate() {
     _rocket->setDrawScale(_scale);
     _rocket->setAngle(-M_PI_2);
     _rocket->setDebugColor(DYNAMIC_COLOR);
+    //_rocket->setBodyType(b2BodyType::b2_kinematicBody);
     
     auto rocketNode = scene2::PolygonNode::allocWithTexture(image);
 	rocketNode->setAnchor(Vec2::ANCHOR_CENTER);
 	_rocket->setShipNode(rocketNode);
-    
-    // These will attach them to the ship node
-    _rocket->setBurnerStrip(RocketModel::Burner::MAIN, _assets->get<Texture>(MAIN_FIRE_TEXTURE));
-    _rocket->setBurnerStrip(RocketModel::Burner::LEFT, _assets->get<Texture>(LEFT_FIRE_TEXTURE));
-    _rocket->setBurnerStrip(RocketModel::Burner::RIGHT,_assets->get<Texture>(RGHT_FIRE_TEXTURE));
-    
-    // This just stores the keys
-    _rocket->setBurnerSound(RocketModel::Burner::MAIN,  MAIN_FIRE_SOUND);
-    _rocket->setBurnerSound(RocketModel::Burner::LEFT,  LEFT_FIRE_SOUND);
-    _rocket->setBurnerSound(RocketModel::Burner::RIGHT, RGHT_FIRE_SOUND);
 
     // Create the polygon node (empty, as the model will initialize)
     _worldnode->addChild(rocketNode);
@@ -518,20 +466,17 @@ void GameScene::preUpdate(float dt) {
     }
     
     if (_input.didFire()) {
-        Vec2 pos = _rocket->getPosition()+Vec2(0,-2.f);
-        addCrateAt(pos);
+        float angle = _rocket->getAngle() + M_PI_2;
+        Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
+        Vec2 pos = _rocket->getPosition()+1.5f*forward;
+        auto crate = addCrateAt(pos);
+        //crate->setBodyType(b2_kinematicBody);
+        crate->setLinearVelocity(forward*10);
         CULog("Add Crate");
     }
+    
+    _rocket->setAngle(_input.getVertical() * _rocket->getTurnRate() + _rocket->getAngle());
 
-    // Apply the force to the rocket
-    _rocket->setFX(_input.getHorizontal() * _rocket->getThrust());
-    _rocket->setFY(_input.getVertical() * _rocket->getThrust());
-    _rocket->applyForce();
-
-    // Animate the three burners
-    updateBurner(RocketModel::Burner::MAIN, _rocket->getFY() > 1);
-    updateBurner(RocketModel::Burner::LEFT, _rocket->getFX() > 1);
-    updateBurner(RocketModel::Burner::RIGHT, _rocket->getFX() < -1);
 }
 
 void GameScene::postUpdate(float dt) {
@@ -554,59 +499,11 @@ void GameScene::fixedUpdate() {
  * @param  delta    Number of seconds since last animation frame
  */
 void GameScene::update(float dt) {
-    _input.update(dt);
-    
-    // Process the toggled key commands
-    if (_input.didDebug()) { setDebug(!isDebug()); }
-    if (_input.didReset()) { reset(); }
-    if (_input.didExit())  {
-        CULog("Shutting down");
-        Application::get()->quit();
-    }
-
-    // Apply the force to the rocket
-    //_rocket->setFX(_input.getHorizontal() * _rocket->getThrust());
-    //_rocket->setFY(_input.getVertical() * _rocket->getThrust());
-    _rocket->setAngle(_input.getVertical() * _rocket->geThrust() + _rocket->getAngle());
-    //_rocket->applyForce();
-
-    // Animate the three burners
-    updateBurner(RocketModel::Burner::MAIN,  _rocket->getFY() >  1);
-    updateBurner(RocketModel::Burner::LEFT,  _rocket->getFX() >  1);
-    updateBurner(RocketModel::Burner::RIGHT, _rocket->getFX() <  -1);
-
-    // Turn the physics engine crank.
-    // TODO: Implement https://gafferongames.com/post/fix_your_timestep/
+    preUpdate(dt);
     _world->update(dt);
+    postUpdate(<#float dt#>);
 }
 #endif
-
-/**
- * Updates that animation for a single burner
- *
- * This method is here instead of the the rocket model because of our philosophy
- * that models should always be lightweight.  Animation includes sounds and other
- * assets that we do not want to process in the model
- *
- * @param  burner   The rocket burner to animate
- * @param  on       Whether to turn the animation on or off
- */
-void GameScene::updateBurner(RocketModel::Burner burner, bool on) {
-    std::string sound = _rocket->getBurnerSound(burner);
-    if (on) {
-        _rocket->animateBurner(burner, true);
-        if (!AudioEngine::get()->isActive(sound) && sound.size() > 0) {
-            auto source = _assets->get<Sound>(sound);
-            AudioEngine::get()->play(sound,source,true,source->getVolume());
-        }
-    } else {
-        _rocket->animateBurner(burner, false);
-        if (AudioEngine::get()->isActive(sound)) {
-            AudioEngine::get()->clear(sound);
-        }
-    }
-    
-}
 
 /**
  * Processes the start of a collision

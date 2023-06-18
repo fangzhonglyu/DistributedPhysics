@@ -39,6 +39,7 @@
 
 /** The thrust factor to convert player input into thrust */
 #define DEFAULT_THRUST 30.0f
+#define TURN_RATE 0.05f
 
 /**
  * This class is the player avatar for the rocket lander game.
@@ -301,6 +302,8 @@ public:
      * @return the amount of thrust that this rocket has.
      */
     float getThrust() const { return DEFAULT_THRUST; }
+    
+    float getTurnRate() const { return TURN_RATE; }
 
     
 #pragma mark -

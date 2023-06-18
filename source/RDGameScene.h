@@ -252,18 +252,6 @@ public:
 #endif 
 
     /**
-     * Updates that animation for a single burner
-     *
-     * This method is here instead of the the rocket model because of our 
-     * philosophy that models should always be lightweight.  Animation includes 
-     * sounds and other assets that we do not want to process in the model.
-     *
-     * @param burner    The rocket burner to animate
-     * @param on        Whether to turn the animation on or off
-     */
-    void updateBurner(RocketModel::Burner burner, bool on);
-
-    /**
      * Resets the status of the game so that we can play again.
      */
     void reset();
