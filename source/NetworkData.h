@@ -11,11 +11,13 @@
 
 using namespace cugl;
 
+#define FIRE_INPUT_FLAG 1
+#define STATE_SYNC_FLAG 2
+
 typedef struct {
     /** Discrete timestamp for the time of this message for network synchronization. */
     Uint64 timestamp;
-    /** The message body */
-    std::vector<std::byte> data;
+    
     /**
      * Flag for distinguishing message priority.
      *
@@ -26,6 +28,10 @@ typedef struct {
      * Order is defined by the comparator struct below.
      */
     Uint8 flag;
+    
+    /** The message body */
+    std::vector<std::byte> data;
+    
 } netdata;
 
 /**
@@ -47,69 +53,39 @@ struct compareTimestamp{
     }
 };
 
-class NetDataCache {
-    
-    NetDataCache(){}
+class NetCache {
     
 protected:
     /** Data cache for outbound messages to be broadcasted to the network. */
-    static std::priority_queue<netdata,std::vector<netdata>,compareTimestamp> _outDataCache;
-    /** Data cache for inbound messages received from message broadcase. */
-    static std::priority_queue<netdata,std::vector<netdata>,compareTimestamp> _inDataCache;
-
+    std::priority_queue<netdata,std::vector<netdata>,compareTimestamp> _netCache;
+    
 public:
-    /**
-     * peek from earliest inbound message
-     */
-    static netdata peekIn(){
-        return _inDataCache.top();
+    bool isEmpty(){
+        return _netCache.empty();
     }
     
-    /**
-     * pop the earliest inbound message
-     */
-    static netdata pollIn(){
-        netdata temp = _inDataCache.top();
-        _inDataCache.pop();
+    netdata peek(){
+        return _netCache.top();
+    }
+    
+    netdata pop(){
+        netdata temp = _netCache.top();
+        _netCache.pop();
         return temp;
     }
     
-    /**
-     * push an outbound message
-     */
-    static void pushOut(netdata outMsg){
-        _outDataCache.push(outMsg);
+    void push(netdata data){
+        _netCache.push(data);
     }
     
-    /**
-     * pop an outbound message
-     */
-    static netdata popOut(){
-        netdata temp = _outDataCache.top();
-        _outDataCache.pop();
-        return temp;
+    void clear(){
+        _netCache.empty();
     }
     
-    /**
-     * clears all cached outbound messages
-     */
-    static void clearOut(){
-        _outDataCache.empty();
-    }
-    
-    /**
-     * clears all cached inbound messages
-     */
-    static void clearIn(){
-        _inDataCache.empty();
-    }
-    
-    /**
-     * purge on messages
-     */
-    static void resetCache(){
-        clearOut();
-        clearIn();
+    void skipToTime(Uint64 timestamp){
+        while(_netCache.top().timestamp < timestamp){
+            _netCache.pop();
+        }
     }
 };
 

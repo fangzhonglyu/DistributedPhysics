@@ -79,7 +79,11 @@ bool NetworkController::checkConnection() {
 		_status = Status::CONNECTED;
 		if (_isHost) {
 			_roomid = _network->getRoom();
+            _localPid = 0;
 		}
+        else{
+            _localPid = 1;
+        }
 		return true;
 	}
 	else if (state == NetcodeConnection::State::NEGOTIATING) {
@@ -95,10 +99,15 @@ bool NetworkController::checkConnection() {
 	return true;
 }
 
-void NetworkController::broadCast(const std::vector<std::byte>&data) {
+void NetworkController::broadCast(const std::vector<std::byte>& data) {
 	if (_status == Status::CONNECTED) {
 		_network->broadcast(data);
+        _network->getUUID();
 	}
+}
+
+Uint8 NetworkController::getLocalPid(){
+    return _localPid;
 }
 
 void processData(const std::string source, const std::vector<std::byte>& data) {

@@ -36,6 +36,8 @@ protected:
     /** Whether or not we have finished loading all assets */
     bool _loaded;
     
+    NetworkController _network;
+    
 public:
 #pragma mark Constructors
     /**

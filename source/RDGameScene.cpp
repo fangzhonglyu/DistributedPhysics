@@ -252,6 +252,10 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     _complete = false;
     setDebug(false);
     
+    _netCache.clear();
+    _serializer.reset();
+    _deserializer.reset();
+    
     // XNA nostalgia
     Application::get()->setClearColor(Color4f::CORNFLOWER);
     return true;
@@ -441,9 +445,65 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
     if (obj->getBodyType() == b2_dynamicBody) {
         scene2::SceneNode* weak = node.get(); // No need for smart pointer in callback
         obj->setListener([=](physics2::Obstacle* obs){
-            weak->setPosition(obs->getPosition()*_scale);
-            weak->setAngle(obs->getAngle());
+            float leftover = Application::get()->getLeftOver()/1000000.f;
+            Vec2 pos = obs->getPosition()+leftover*obs->getLinearVelocity();
+            float angle = obs->getAngle()+leftover*obs->getAngularVelocity();
+            weak->setPosition(pos*_scale);
+            weak->setAngle(angle);
         });
+    }
+}
+
+netdata GameScene::packFire(Uint64 timestamp){
+    netdata data;
+    data.timestamp = timestamp;
+    data.flag = FIRE_INPUT_FLAG;
+    _serializer.reset();
+    _serializer.writeUint32(0);
+    _serializer.writeFloat(_rocket->getAngle());
+    data.data = _serializer.serialize();
+    return data;
+}
+
+void GameScene::processFire(netdata data){
+    CUAssert(data.flag == FIRE_INPUT_FLAG);
+    Uint64 counter = Application::get()->getUpdateCount();
+    if(data.timestamp < counter){
+        CULogError("Simulation Corrupted, State Synchronization Needed");
+    }
+    else if(data.timestamp == counter){
+        _deserializer.reset();
+        _deserializer.receive(data.data);
+        Uint32 player = _deserializer.readUint32();
+        float angle = _deserializer.readFloat() + M_PI_2;
+        Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
+        Vec2 pos = _rocket->getPosition()+1.5f*forward;
+        auto crate = addCrateAt(pos);
+        //crate->setBodyType(b2_kinematicBody);
+        crate->setLinearVelocity(forward*10);
+        CULog("Add Crate");
+    }
+    
+   
+}
+
+void GameScene::processData(){
+    Uint64 counter = Application::get()->getUpdateCount();
+    if(_netCache.isEmpty()){
+        return;
+    }
+    
+    while(!_netCache.isEmpty() && _netCache.peek().timestamp <= counter){
+        netdata next = _netCache.pop();
+        switch (next.flag) {
+            case FIRE_INPUT_FLAG:
+                processFire(next);
+                break;
+                
+            default:
+                CULogError("unknown flag %u", next.flag);
+                break;
+        }
     }
 }
 
@@ -466,13 +526,7 @@ void GameScene::preUpdate(float dt) {
     }
     
     if (_input.didFire()) {
-        float angle = _rocket->getAngle() + M_PI_2;
-        Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
-        Vec2 pos = _rocket->getPosition()+1.5f*forward;
-        auto crate = addCrateAt(pos);
-        //crate->setBodyType(b2_kinematicBody);
-        crate->setLinearVelocity(forward*10);
-        CULog("Add Crate");
+        _netCache.push(packFire(Application::get()->getUpdateCount()+20));
     }
     
     _rocket->setAngle(_input.getVertical() * _rocket->getTurnRate() + _rocket->getAngle());
@@ -484,6 +538,7 @@ void GameScene::postUpdate(float dt) {
 }
 
 void GameScene::fixedUpdate() {
+    processData();
     _world->update(FIXED_TIMESTEP_S);
 }
 

@@ -46,6 +46,8 @@ protected:
     std::string _roomid;
 
     bool _isHost;
+    
+    Uint32 _localPid;
 
 public:
 #pragma mark -
@@ -90,6 +92,8 @@ public:
     void processData(const std::string source, const std::vector<std::byte>& data);
 
     void startGame();
+    
+    Uint8 getLocalPid();
 
     Status getStatus() const {
         return _status;

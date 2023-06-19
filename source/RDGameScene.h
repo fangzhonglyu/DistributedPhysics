@@ -29,6 +29,8 @@
 #include <vector>
 #include "RDRocketModel.h"
 #include "RDInput.h"
+#include "NetworkData.h"
+#include "RDNetwork.h"
 
 /**
  * This class is the primary gameplay constroller for the demo.
@@ -69,6 +71,12 @@ protected:
     bool _complete;
     /** Whether or not debug mode is active */
     bool _debug;
+    
+    NetCache _netCache;
+    
+    cugl::net::NetcodeSerializer _serializer;
+    
+    cugl::net::NetcodeDeserializer _deserializer;
     
 #pragma mark Internal Object Management
     
@@ -256,6 +264,14 @@ public:
      */
     void reset();
     
+    /**
+     * Packs a fire input message
+     */
+    netdata packFire(Uint64 timestamp);
+    
+    void processFire(netdata data);
+    
+    void processData();
     
 #pragma mark -
 #pragma mark Collision Handling
