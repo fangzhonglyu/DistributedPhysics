@@ -49,6 +49,8 @@ private:
     bool  _keyExit;
     /** Whether the key for fired was down */
     bool  _keyFired;
+    
+    float _firePower;
 
     // TOUCH SUPPORT
     /** The initial touch location for the current gesture */
@@ -178,6 +180,7 @@ public:
      */
     bool didFire() const { return _fired; }
     
+    float getFirePower() const { return _firePower; }
     
 #pragma mark -
 #pragma mark Touch Callbacks

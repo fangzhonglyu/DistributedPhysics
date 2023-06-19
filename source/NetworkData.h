@@ -32,6 +32,8 @@ typedef struct {
     /** The message body */
     std::vector<std::byte> data;
     
+    Uint64 receivedBy;
+    
 } netdata;
 
 /**
@@ -75,6 +77,7 @@ public:
     }
     
     void push(netdata data){
+        data.receivedBy = Application::get()->getUpdateCount();
         _netCache.push(data);
     }
     

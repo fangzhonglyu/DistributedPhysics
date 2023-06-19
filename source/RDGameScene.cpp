@@ -49,6 +49,8 @@ using namespace cugl;
 /** The default value of gravity (going down) */
 #define DEFAULT_GRAVITY -4.9f
 
+#define DEFAULT_TURN_RATE 0.05f
+
 /** To automate the loading of crate files */
 #define NUM_CRATES 2
 
@@ -74,8 +76,9 @@ float BOXES[] = { 14.5f, 14.25f,
                   11.5f,  5.25f, 14.5f,  5.25f, 17.5f, 5.25f,
                   10.0f,  3.00f, 13.0f,  3.00f, 16.0f, 3.00f, 19.0f, 3.0f};
 
-/** The initial rocket position */
-float ROCK_POS[] = { 2, 9 };
+/** The initial cannon position */
+float CAN1_POS[] = { 2, 9 };
+float CAN2_POS[] = { 30,9 };
 /** The goal door position */
 float GOAL_POS[] = { 6, 12};
 
@@ -139,7 +142,8 @@ float GOAL_POS[] = { 6, 12};
  */
 GameScene::GameScene() : cugl::Scene2(),
 _complete(false),
-_debug(false)
+_debug(false),
+_isHost(false)
 {    
 }
 
@@ -157,8 +161,8 @@ _debug(false)
  *
  * @return true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets) {
-    return init(assets,Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, bool isHost) {
+    return init(assets,Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY),isHost);
 }
 
 /**
@@ -177,8 +181,8 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets) {
  *
  * @return  true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect) {
-    return init(assets,rect,Vec2(0,DEFAULT_GRAVITY));
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, bool isHost) {
+    return init(assets,rect,Vec2(0,DEFAULT_GRAVITY),isHost);
 }
 
 /**
@@ -198,7 +202,7 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
  *
  * @return  true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const Vec2 gravity) {
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const Vec2 gravity, bool isHost) {
     Size dimen = computeActiveSize();
 
     if (assets == nullptr) {
@@ -207,19 +211,11 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
         return false;
     }
     
+    _isHost = isHost;
+    
     // Start up the input handler
     _assets = assets;
     _input.init();
-    
-    // Create the world and attach the listeners.
-    _world = physics2::ObstacleWorld::alloc(rect,gravity);
-    _world->activateCollisionCallbacks(true);
-    _world->onBeginContact = [this](b2Contact* contact) {
-        beginContact(contact);
-    };
-    _world->beforeSolve = [this](b2Contact* contact, const b2Manifold* oldManifold) {
-        beforeSolve(contact,oldManifold);
-    };
     
     // IMPORTANT: SCALING MUST BE UNIFORM
     // This means that we cannot change the aspect ratio of the physics world
@@ -243,9 +239,13 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     _winnode->setForeground(STATIC_COLOR);
     _winnode->setVisible(false);
     
+    _chargeBar = std::dynamic_pointer_cast<scene2::ProgressBar>(assets->get<scene2::SceneNode>("load_bar"));
+    _chargeBar->setPosition(Vec2(dimen.width/2.0f,dimen.height*0.9f));
+    
     addChild(_worldnode);
     addChild(_debugnode);
     addChild(_winnode);
+    addChild(_chargeBar);
     
     populate();
     _active = true;
@@ -300,7 +300,7 @@ void GameScene::reset() {
 
 std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
     // Pick a crate and random and generate the key
-    int indx = 1; //(std::rand() % 2 == 0 ? 2 : 1);
+    int indx = (std::rand() % 2 == 0 ? 2 : 1);
     std::stringstream ss;
     ss << CRATE_PREFIX << (indx < 10 ? "0" : "" ) << indx;
 
@@ -337,6 +337,18 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
  * with your serialization loader, which would process a level file.
  */
 void GameScene::populate() {
+    
+    // have to completely reset the world
+    _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
+    _world->activateCollisionCallbacks(true);
+    _world->onBeginContact = [this](b2Contact* contact) {
+        beginContact(contact);
+    };
+    _world->beforeSolve = [this](b2Contact* contact, const b2Manifold* oldManifold) {
+        beforeSolve(contact,oldManifold);
+    };
+    
+    
     std::shared_ptr<Texture> image;
     std::shared_ptr<scene2::PolygonNode> sprite;
     
@@ -400,26 +412,46 @@ void GameScene::populate() {
         addCrateAt(boxPos);
     }
 
-#pragma mark : Rocket
-    Vec2 rockPos = ((Vec2)ROCK_POS);
+#pragma mark : Cannon1
+    Vec2 canPos1 = ((Vec2)CAN1_POS);
     image  = _assets->get<Texture>(ROCK_TEXTURE);
-    Size rockSize(image->getSize()/_scale);
+    Size canSize(image->getSize()/_scale);
     
-    _rocket = RocketModel::alloc(rockPos,rockSize);
-    _rocket->setBodyType(b2BodyType::b2_staticBody);
-    _rocket->setDrawScale(_scale);
-    _rocket->setAngle(-M_PI_2);
-    _rocket->setDebugColor(DYNAMIC_COLOR);
+    _cannon1 = CannonModel::alloc(canPos1,canSize,DEFAULT_TURN_RATE);
+    _cannon1->setBodyType(b2BodyType::b2_staticBody);
+    _cannon1->setDrawScale(_scale);
+    _cannon1->setAngle(-M_PI_2);
+    _cannon1->setDebugColor(DYNAMIC_COLOR);
+    _cannon1->setSensor(true);
     //_rocket->setBodyType(b2BodyType::b2_kinematicBody);
     
-    auto rocketNode = scene2::PolygonNode::allocWithTexture(image);
-	rocketNode->setAnchor(Vec2::ANCHOR_CENTER);
-	_rocket->setShipNode(rocketNode);
+    auto cannon1Node = scene2::PolygonNode::allocWithTexture(image);
+	cannon1Node->setAnchor(Vec2::ANCHOR_CENTER);
+	_cannon1->setCannonNode(cannon1Node);
 
     // Create the polygon node (empty, as the model will initialize)
-    _worldnode->addChild(rocketNode);
-    _rocket->setDebugScene(_debugnode);
-    _world->addObstacle(_rocket);
+    _worldnode->addChild(cannon1Node);
+    _cannon1->setDebugScene(_debugnode);
+    _world->addObstacle(_cannon1);
+    
+#pragma mark : Cannon2
+    Vec2 canPos2 = ((Vec2)CAN2_POS);
+    image  = _assets->get<Texture>(ROCK_TEXTURE);
+    
+    _cannon2 = CannonModel::alloc(canPos2,canSize,-DEFAULT_TURN_RATE);
+    _cannon2->setBodyType(b2BodyType::b2_staticBody);
+    _cannon2->setDrawScale(_scale);
+    _cannon2->setAngle(M_PI_2);
+    _cannon2->setDebugColor(DYNAMIC_COLOR);
+    _cannon2->setSensor(true);
+    
+    auto cannon2Node = scene2::PolygonNode::allocWithTexture(image);
+    cannon2Node->setAnchor(Vec2::ANCHOR_CENTER);
+    _cannon2->setCannonNode(cannon2Node);
+    // Create the polygon node (empty, as the model will initialize)
+    _worldnode->addChild(cannon2Node);
+    _cannon2->setDebugScene(_debugnode);
+    _world->addObstacle(_cannon2);
 }
 
 /**
@@ -460,9 +492,15 @@ netdata GameScene::packFire(Uint64 timestamp){
     data.timestamp = timestamp;
     data.flag = FIRE_INPUT_FLAG;
     _serializer.reset();
-    _serializer.writeUint32(0);
-    _serializer.writeFloat(_rocket->getAngle());
+    _serializer.writeBool(_isHost);
+    auto cannon = _isHost ? _cannon1 : _cannon2;
+    float angle = cannon->getAngle();
+    _serializer.writeFloat(angle);
+    float firepower = _input.getFirePower();
+    _serializer.writeFloat(firepower);
     data.data = _serializer.serialize();
+    float delayMs = (timestamp-Application::get()->getUpdateCount())*FIXED_TIMESTEP_S*1000;
+    CULog("Fire input at angle %f, power %f, cached for %llu, added delay of %.2fms",angle,firepower,timestamp,delayMs);
     return data;
 }
 
@@ -470,19 +508,21 @@ void GameScene::processFire(netdata data){
     CUAssert(data.flag == FIRE_INPUT_FLAG);
     Uint64 counter = Application::get()->getUpdateCount();
     if(data.timestamp < counter){
-        CULogError("Simulation Corrupted, State Synchronization Needed");
+        CULogError("Simulation Corrupt	ed, State Synchronization Needed");
     }
     else if(data.timestamp == counter){
         _deserializer.reset();
         _deserializer.receive(data.data);
-        Uint32 player = _deserializer.readUint32();
+        bool isHost = _deserializer.readBool();
+        auto cannon = _isHost ? _cannon1 : _cannon2;
         float angle = _deserializer.readFloat() + M_PI_2;
+        float firePower = _deserializer.readFloat();
         Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
-        Vec2 pos = _rocket->getPosition()+1.5f*forward;
+        Vec2 pos = cannon->getPosition()+1.5f*forward;
         auto crate = addCrateAt(pos);
         //crate->setBodyType(b2_kinematicBody);
-        crate->setLinearVelocity(forward*10);
-        CULog("Add Crate");
+        crate->setLinearVelocity(forward*50*firePower);
+        CULog("Cannon %d fire at %llu, received by: %llu",isHost ? 1 : 2, Application::get()->getUpdateCount(),data.receivedBy);
     }
     
    
@@ -517,6 +557,14 @@ void GameScene::processData(){
 #if USING_PHYSICS
 void GameScene::preUpdate(float dt) {
     _input.update(dt);
+    
+    if(_input.getFirePower()>0.f){
+        _chargeBar->setVisible(true);
+        _chargeBar->setProgress(_input.getFirePower());
+    }
+    else{
+        _chargeBar->setVisible(false);
+    }
 
     // Process the toggled key commands
     if (_input.didDebug()) { setDebug(!isDebug()); }
@@ -530,7 +578,8 @@ void GameScene::preUpdate(float dt) {
         _netCache.push(packFire(Application::get()->getUpdateCount()+20));
     }
     
-    _rocket->setAngle(_input.getVertical() * _rocket->getTurnRate() + _rocket->getAngle());
+    auto cannon = _isHost ? _cannon1 : _cannon2;
+    cannon->setAngle(_input.getVertical() * cannon->getTurnRate() + cannon->getAngle());
 
 }
 
@@ -576,7 +625,7 @@ void GameScene::beginContact(b2Contact* contact) {
     b2Body* body2 = contact->GetFixtureB()->GetBody();
     
     // If we hit the "win" door, we are done
-    intptr_t rptr = reinterpret_cast<intptr_t>(_rocket.get());
+    intptr_t rptr = reinterpret_cast<intptr_t>(_cannon1.get());
     intptr_t dptr = reinterpret_cast<intptr_t>(_goalDoor.get());
 
     if((body1->GetUserData().pointer == rptr && body2->GetUserData().pointer == dptr) ||

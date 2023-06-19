@@ -49,38 +49,40 @@
  * The other way is to create a subclass of a physics object and have it track
  * its own scene graph node.  This class is an example of the latter.
  */
-class RocketModel : public cugl::physics2::BoxObstacle {
+class CannonModel : public cugl::physics2::BoxObstacle {
 private:
     /** This macro disables the copy constructor (not allowed on scene graphs) */
-    CU_DISALLOW_COPY_AND_ASSIGN(RocketModel);
+    CU_DISALLOW_COPY_AND_ASSIGN(CannonModel);
 
 protected:
     /** The force to apply to this rocket */
     cugl::Vec2 _force;
 
     /** The scene graph node for the rocket ship */
-    std::shared_ptr<cugl::scene2::SceneNode> _shipNode;
+    std::shared_ptr<cugl::scene2::SceneNode> _cannonNode;
     
-    /** The animation node for the main afterburner */
-    std::shared_ptr<cugl::scene2::SpriteNode> _mainBurner;
-    /** The associated sound for the main afterburner */
-    std::string _mainSound;
-    /** The animation phase for the main afterburner */
-    bool _mainCycle;
-
-    /** The animation node for the left side burner */
-    std::shared_ptr<cugl::scene2::SpriteNode> _leftBurner;
-    /** The associated sound for the left side burner */
-    std::string _leftSound;
-    /** The animation phase for the left side burner */
-    bool _leftCycle;
-
-    /** The texture filmstrip for the left animation node */
-    std::shared_ptr<cugl::scene2::SpriteNode> _rghtBurner;
-    /** The associated sound for the right side burner */
-    std::string _rghtSound;
-    /** The animation phase for the right side burner */
-    bool _rghtCycle;
+    float _turnRate;
+    
+//    /** The animation node for the main afterburner */
+//    std::shared_ptr<cugl::scene2::SpriteNode> _mainBurner;
+//    /** The associated sound for the main afterburner */
+//    std::string _mainSound;
+//    /** The animation phase for the main afterburner */
+//    bool _mainCycle;
+//
+//    /** The animation node for the left side burner */
+//    std::shared_ptr<cugl::scene2::SpriteNode> _leftBurner;
+//    /** The associated sound for the left side burner */
+//    std::string _leftSound;
+//    /** The animation phase for the left side burner */
+//    bool _leftCycle;
+//
+//    /** The texture filmstrip for the left animation node */
+//    std::shared_ptr<cugl::scene2::SpriteNode> _rghtBurner;
+//    /** The associated sound for the right side burner */
+//    std::string _rghtSound;
+//    /** The animation phase for the right side burner */
+//    bool _rghtCycle;
     
     /** Cache object for transforming the force according the object angle */
     cugl::Mat4 _affine;
@@ -107,12 +109,12 @@ public:
      * NEVER USE A CONSTRUCTOR WITH NEW. If you want to allocate a model on
      * the heap, use one of the static constructors instead.
      */
-    RocketModel(void) : BoxObstacle(), _drawscale(1.0f), _mainCycle(false), _leftCycle(false), _rghtCycle(false) { }
+    CannonModel(void) : BoxObstacle(), _drawscale(1.0f), _turnRate(0.05f) { }
     
     /**
      * Destroys this rocket, releasing all resources.
      */
-    virtual ~RocketModel(void) { dispose(); }
+    virtual ~CannonModel(void) { dispose(); }
     
     /**
      * Disposes all resources and assets of this rocket
@@ -135,7 +137,7 @@ public:
      *
      * @return  true if the obstacle is initialized properly, false otherwise.
      */
-    virtual bool init() override { return init(cugl::Vec2::ZERO,cugl::Size::ZERO); }
+    virtual bool init() override { return init(cugl::Vec2::ZERO,cugl::Size::ZERO,TURN_RATE); }
     
     /**
      * Initializes a new rocket with the given position
@@ -152,7 +154,7 @@ public:
      *
      * @return  true if the obstacle is initialized properly, false otherwise.
      */
-    virtual bool init(const cugl::Vec2 pos) override { return init(pos,cugl::Size(1,1)); }
+    virtual bool init(const cugl::Vec2 pos) override { return init(pos,cugl::Size(1,1),TURN_RATE); }
     
     /**
      * Initializes a new rocket with the given position and size.
@@ -169,7 +171,7 @@ public:
      *
      * @return  true if the obstacle is initialized properly, false otherwise.
      */
-    virtual bool init(const cugl::Vec2 pos, const cugl::Size size) override;
+    virtual bool init(const cugl::Vec2 pos, const cugl::Size size,float turnRate);
     
     
 #pragma mark Static Constructors
@@ -186,8 +188,8 @@ public:
      *
      * @return a newly allocate rocket at the origin.
      */
-    static std::shared_ptr<RocketModel> alloc() {
-        std::shared_ptr<RocketModel> result = std::make_shared<RocketModel>();
+    static std::shared_ptr<CannonModel> alloc() {
+        std::shared_ptr<CannonModel> result = std::make_shared<CannonModel>();
         return (result->init() ? result : nullptr);
     }
     
@@ -206,8 +208,8 @@ public:
      *
      * @return a newly allocated rocket with the given position
      */
-    static std::shared_ptr<RocketModel> alloc(const cugl::Vec2& pos) {
-        std::shared_ptr<RocketModel> result = std::make_shared<RocketModel>();
+    static std::shared_ptr<CannonModel> alloc(const cugl::Vec2& pos) {
+        std::shared_ptr<CannonModel> result = std::make_shared<CannonModel>();
         return (result->init(pos) ? result : nullptr);
     }
     
@@ -226,9 +228,9 @@ public:
      *
      * @return a newly allocated rocket with the given position
      */
-    static std::shared_ptr<RocketModel> alloc(const cugl::Vec2& pos, const cugl::Size& size) {
-        std::shared_ptr<RocketModel> result = std::make_shared<RocketModel>();
-        return (result->init(pos,size) ? result : nullptr);
+    static std::shared_ptr<CannonModel> alloc(const cugl::Vec2& pos, const cugl::Size& size, float turnRate) {
+        std::shared_ptr<CannonModel> result = std::make_shared<CannonModel>();
+        return (result->init(pos,size,turnRate) ? result : nullptr);
     }
     
 #pragma mark -
@@ -293,17 +295,17 @@ public:
      */
     void setFY(float value) { _force.y = value; }
     
-    /**
-     * Returns the amount of thrust that this rocket has.
-     *
-     * Multiply this value times the horizontal and vertical values in the
-     * input controller to get the force.
-     *
-     * @return the amount of thrust that this rocket has.
-     */
-    float getThrust() const { return DEFAULT_THRUST; }
+//    /**
+//     * Returns the amount of thrust that this rocket has.
+//     *
+//     * Multiply this value times the horizontal and vertical values in the
+//     * input controller to get the force.
+//     *
+//     * @return the amount of thrust that this rocket has.
+//     */
+//    float getThrust() const { return DEFAULT_THRUST; }
     
-    float getTurnRate() const { return TURN_RATE; }
+    float getTurnRate() const { return _turnRate; }
 
     
 #pragma mark -
@@ -317,7 +319,7 @@ public:
      *
      * @return the scene graph node representing this rocket.
      */
-    const std::shared_ptr<cugl::scene2::SceneNode>& getShipNode() const { return _shipNode; }
+    const std::shared_ptr<cugl::scene2::SceneNode>& getCannonNode() const { return _cannonNode; }
 
     /**
      * Sets the scene graph node representing this rocket.
@@ -331,64 +333,64 @@ public:
      *
      * @param node  The scene graph node representing this rocket.
      */
-    void setShipNode(const std::shared_ptr<cugl::scene2::SceneNode>& node);
+    void setCannonNode(const std::shared_ptr<cugl::scene2::SceneNode>& node);
 
-    /**
-     * Returns the animation node for the given afterburner
-     *
-     * The model tracks the animation nodes separately from the main scene
-     * graph node (even though they are childing of this node).  That is so 
-     * we can encapsulate the animation cycle.
-     *
-     * @param  burner   The enumeration to identify the afterburner
-     *
-     * @return the animation node for the given afterburner
-     */
-    const std::shared_ptr<cugl::scene2::SpriteNode>& getBurnerStrip(Burner burner) const;
-    
-    /**
-     * Sets the animation node for the given afterburner
-     *
-     * The model tracks the animation nodes separately from the main scene
-     * graph node (even though they are childing of this node).  That is so
-     * we can encapsulate the animation cycle.
-     * @param burner    The enumeration to identify the afterburner
-     * @param strip     The animation node for the given afterburner
-     */
-    void setBurnerStrip(Burner burner, const std::shared_ptr<cugl::Texture>& texture);
-    
-    /**
-     * Returns the key for the sound to accompany the given afterburner
-     *
-     * The key should either refer to a valid sound loaded in the AssetManager or 
-     * be empty ("").  If the key is "", then no sound will play.
-     *
-     * @param burner    The enumeration to identify the afterburner
-     *
-     * @return the key for the sound to accompany the given afterburner
-     */
-    const std::string& getBurnerSound(Burner burner) const;
-    
-    /**
-     * Sets the key for the sound to accompany the given afterburner
-     *
-     * The key should either refer to a valid sound loaded in the AssetManager or
-     * be empty ("").  If the key is "", then no sound will play.
-     *
-     * @param burner    The enumeration to identify the afterburner
-     * @param key       The key for the sound to accompany the main afterburner
-     */
-    void setBurnerSound(Burner burner, const std::string& key);
-
-    /**
-     * Animates the given burner.
-     *
-     * If the animation is not active, it will reset to the initial animation frame.
-     *
-     * @param burner    The reference to the rocket burner
-     * @param on        Whether the animation is active
-     */
-    void animateBurner(Burner burner, bool on);
+//    /**
+//     * Returns the animation node for the given afterburner
+//     *
+//     * The model tracks the animation nodes separately from the main scene
+//     * graph node (even though they are childing of this node).  That is so
+//     * we can encapsulate the animation cycle.
+//     *
+//     * @param  burner   The enumeration to identify the afterburner
+//     *
+//     * @return the animation node for the given afterburner
+//     */
+//    const std::shared_ptr<cugl::scene2::SpriteNode>& getBurnerStrip(Burner burner) const;
+//
+//    /**
+//     * Sets the animation node for the given afterburner
+//     *
+//     * The model tracks the animation nodes separately from the main scene
+//     * graph node (even though they are childing of this node).  That is so
+//     * we can encapsulate the animation cycle.
+//     * @param burner    The enumeration to identify the afterburner
+//     * @param strip     The animation node for the given afterburner
+//     */
+//    void setBurnerStrip(Burner burner, const std::shared_ptr<cugl::Texture>& texture);
+//
+//    /**
+//     * Returns the key for the sound to accompany the given afterburner
+//     *
+//     * The key should either refer to a valid sound loaded in the AssetManager or
+//     * be empty ("").  If the key is "", then no sound will play.
+//     *
+//     * @param burner    The enumeration to identify the afterburner
+//     *
+//     * @return the key for the sound to accompany the given afterburner
+//     */
+//    const std::string& getBurnerSound(Burner burner) const;
+//
+//    /**
+//     * Sets the key for the sound to accompany the given afterburner
+//     *
+//     * The key should either refer to a valid sound loaded in the AssetManager or
+//     * be empty ("").  If the key is "", then no sound will play.
+//     *
+//     * @param burner    The enumeration to identify the afterburner
+//     * @param key       The key for the sound to accompany the main afterburner
+//     */
+//    void setBurnerSound(Burner burner, const std::string& key);
+//
+//    /**
+//     * Animates the given burner.
+//     *
+//     * If the animation is not active, it will reset to the initial animation frame.
+//     *
+//     * @param burner    The reference to the rocket burner
+//     * @param on        Whether the animation is active
+//     */
+//    void animateBurner(Burner burner, bool on);
     
     /** 
      * Sets the ratio of the ship sprite to the physics body

@@ -26,6 +26,8 @@ using namespace cugl;
 #define EXIT_KEY  KeyCode::ESCAPE
 /** The fire key for firing a crate */
 #define FIRE_KEY  KeyCode::SPACE
+/** The max charge time of a fire in milliseconds */
+#define FIRE_CHARGE_TIME 2000.f
 
 /** How fast a double click must be in milliseconds */
 #define EVENT_DOUBLE_CLICK  400
@@ -58,6 +60,7 @@ _keyReset(false),
 _keyDebug(false),
 _keyExit(false),
 _fired(false),
+_firePower(0.0f),
 _horizontal(0.0f),
 _vertical(0.0f) {
 }
@@ -137,7 +140,23 @@ void RocketInput::update(float dt) {
     _keyReset  = keys->keyPressed(RESET_KEY);
     _keyDebug  = keys->keyPressed(DEBUG_KEY);
     _keyExit   = keys->keyPressed(EXIT_KEY);
-    _keyFired  = keys->keyPressed(FIRE_KEY);
+    
+    if(keys->keyPressed(FIRE_KEY)){
+        _timestamp.mark();
+        _keyFired = false;
+    }
+    
+    if (keys->keyReleased(FIRE_KEY)){
+        cugl::Timestamp curr;
+        _keyFired = true;
+    }
+    else if(keys->keyDown(FIRE_KEY)){
+        Timestamp curr;
+        _firePower = SDL_min(1.0f,curr.ellapsedMillis(_timestamp)/FIRE_CHARGE_TIME);
+    }
+    else{
+        _firePower = 0.f;
+    }
     
     left = keys->keyDown(KeyCode::ARROW_LEFT);
     rght = keys->keyDown(KeyCode::ARROW_RIGHT);
@@ -154,6 +173,13 @@ void RocketInput::update(float dt) {
     up   |= (pitch > EVENT_ACCEL_THRESH);
     down |= (pitch < -EVENT_ACCEL_THRESH);
     
+    Timestamp curr;
+    if(_keyUp){
+        _firePower = SDL_min(1.0f,curr.ellapsedMillis(_timestamp)/FIRE_CHARGE_TIME);
+    }noo
+    if(_fired){
+        _firePower = 0.f;
+    }
 #endif
 
     _resetPressed = _keyReset;
@@ -177,14 +203,14 @@ void RocketInput::update(float dt) {
     if (down) {
         _vertical -= 1.0f;
     }
-
+    
+    _keyFired = false;
 
 // If it does not support keyboard, we must reset "virtual" keyboard
 #ifdef CU_TOUCH_SCREEN
     _keyDebug = false;
     _keyReset = false;
     _keyDebug = false;
-    _keyFired = false;
 #endif
 }
 

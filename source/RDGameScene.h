@@ -55,6 +55,8 @@ protected:
     std::shared_ptr<cugl::scene2::SceneNode> _debugnode;
     /** Reference to the win message label */
     std::shared_ptr<cugl::scene2::Label> _winnode;
+    
+    std::shared_ptr<cugl::scene2::ProgressBar> _chargeBar;
 
     /** The Box2D world */
     std::shared_ptr<cugl::physics2::ObstacleWorld> _world;
@@ -64,8 +66,13 @@ protected:
     // Physics objects for the game
     /** Reference to the goalDoor (for collision detection) */
     std::shared_ptr<cugl::physics2::BoxObstacle> _goalDoor;
-    /** Reference to the rocket/player avatar */
-    std::shared_ptr<RocketModel> _rocket;
+    /** Reference to the player1 cannon */
+    std::shared_ptr<CannonModel> _cannon1;
+    /** Reference to the player2 cannon */
+    std::shared_ptr<CannonModel> _cannon2;
+    
+    /** Host is by default the left cannon */
+    bool _isHost;
 
     /** Whether we have completed this "game" */
     bool _complete;
@@ -155,7 +162,7 @@ public:
      *
      * @return true if the controller is initialized properly, false otherwise.
      */
-    bool init(const std::shared_ptr<cugl::AssetManager>& assets);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets, bool isHost);
 
     /**
      * Initializes the controller contents, and starts the game
@@ -173,7 +180,7 @@ public:
      *
      * @return  true if the controller is initialized properly, false otherwise.
      */
-    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect, bool isHost);
     
     /**
      * Initializes the controller contents, and starts the game
@@ -192,7 +199,7 @@ public:
      *
      * @return  true if the controller is initialized properly, false otherwise.
      */
-    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect, const cugl::Vec2 gravity);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect, const cugl::Vec2 gravity, bool isHost);
     
     
 #pragma mark -

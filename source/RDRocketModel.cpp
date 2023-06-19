@@ -72,24 +72,26 @@ using namespace cugl;
  *
  * @return  true if the obstacle is initialized properly, false otherwise.
  */
-bool RocketModel::init(const Vec2 pos, const Size size) {
+bool CannonModel::init(const Vec2 pos, const Size size, float turnRate) {
     physics2::BoxObstacle::init(pos,size);
     std::string name("rocket");
     setName(name);
     
-    _shipNode = nullptr;
+    _cannonNode = nullptr;
     
-    _mainBurner = nullptr;
-    _mainSound  = "";
-    _mainCycle  = true;
+//    _mainBurner = nullptr;
+//    _mainSound  = "";
+//    _mainCycle  = true;
+//
+//    _leftBurner = nullptr;
+//    _leftSound  = "";
+//    _leftCycle  = true;
+//
+//    _rghtBurner = nullptr;
+//    _rghtSound  = "";
+//    _rghtCycle  = true;
     
-    _leftBurner = nullptr;
-    _leftSound  = "";
-    _leftCycle  = true;
-
-    _rghtBurner = nullptr;
-    _rghtSound  = "";
-    _rghtCycle  = true;
+    _turnRate = turnRate;
 
     setDensity(DEFAULT_DENSITY);
     setFriction(DEFAULT_FRICTION);
@@ -106,11 +108,11 @@ bool RocketModel::init(const Vec2 pos, const Size size) {
  * Any assets owned by this object will be immediately released.  Once
  * disposed, a rocket may not be used until it is initialized again.
  */
-void RocketModel::dispose() {
-    _shipNode = nullptr;
-    _mainBurner = nullptr;
-    _leftBurner = nullptr;
-    _rghtBurner = nullptr;
+void CannonModel::dispose() {
+    _cannonNode = nullptr;
+//    _mainBurner = nullptr;
+//    _leftBurner = nullptr;
+//    _rghtBurner = nullptr;
 }
 
 
@@ -121,7 +123,7 @@ void RocketModel::dispose() {
  *
  * This method should be called after the force attribute is set.
  */
-void RocketModel::applyForce() {
+void CannonModel::applyForce() {
     if (!isEnabled()) {
         return;
     }
@@ -148,11 +150,11 @@ void RocketModel::applyForce() {
  *
  * @param delta Timing values from parent loop
  */
-void RocketModel::update(float delta) {
+void CannonModel::update(float delta) {
     Obstacle::update(delta);
-    if (_shipNode != nullptr) {
-        _shipNode->setPosition(getPosition()*_drawscale);
-        _shipNode->setAngle(getAngle());
+    if (_cannonNode != nullptr) {
+        _cannonNode->setPosition(getPosition()*_drawscale);
+        _cannonNode->setAngle(getAngle());
     }
 }
 
@@ -171,192 +173,192 @@ void RocketModel::update(float delta) {
  *
  * @param node  The scene graph node representing this rocket.
  */
-void RocketModel::setShipNode(const std::shared_ptr<scene2::SceneNode>& node) {
-    if (_shipNode != nullptr) {
-        if (_mainBurner != nullptr) {
-            _shipNode->removeChild(_mainBurner);
-        }
-        if (_leftBurner != nullptr) {
-            _shipNode->removeChild(_leftBurner);
-        }
-        if (_rghtBurner != nullptr) {
-            _shipNode->removeChild(_rghtBurner);
-        }
-    }
-    _shipNode = node;
-    if (_mainBurner != nullptr) {
-        _mainBurner->setPosition(_shipNode->getContentSize().width/2.0f,
-                                 _shipNode->getContentSize().height-
-                                 _mainBurner->getContentSize().height/2.0f);
-        _shipNode->addChild(_mainBurner);
-    }
-    if (_leftBurner != nullptr) {
-        _leftBurner->setPosition(_shipNode->getContentSize()/2.0f);
-        _shipNode->addChild(_leftBurner);
-    }
-    if (_rghtBurner != nullptr) {
-        _rghtBurner->setPosition(_shipNode->getContentSize()/2.0f);
-        _shipNode->addChild(_rghtBurner);
-    }
+void CannonModel::setCannonNode(const std::shared_ptr<scene2::SceneNode>& node) {
+//    if (_cannonNode != nullptr) {
+//        if (_mainBurner != nullptr) {
+//            _cannonNode->removeChild(_mainBurner);
+//        }
+//        if (_leftBurner != nullptr) {
+//            _cannonNode->removeChild(_leftBurner);
+//        }
+//        if (_rghtBurner != nullptr) {
+//            _cannonNode->removeChild(_rghtBurner);
+//        }
+//    }
+    _cannonNode = node;
+//    if (_mainBurner != nullptr) {
+//        _mainBurner->setPosition(_cannonNode->getContentSize().width/2.0f,
+//                                 _cannonNode->getContentSize().height-
+//                                 _mainBurner->getContentSize().height/2.0f);
+//        _cannonNode->addChild(_mainBurner);
+//    }
+//    if (_leftBurner != nullptr) {
+//        _leftBurner->setPosition(_cannonNode->getContentSize()/2.0f);
+//        _cannonNode->addChild(_leftBurner);
+//    }
+//    if (_rghtBurner != nullptr) {
+//        _rghtBurner->setPosition(_cannonNode->getContentSize()/2.0f);
+//        _cannonNode->addChild(_rghtBurner);
+//    }
 }
 
 
-/**
- * Returns the animation node for the given afterburner
- *
- * The model tracks the animation nodes separately from the main scene
- * graph node (even though they are childing of this node).  That is so
- * we can encapsulate the animation cycle.
- *
- * @param  burner   The enumeration to identify the afterburner
- *
- * @return the animation node for the given afterburner
- */
-const std::shared_ptr<scene2::SpriteNode>& RocketModel::getBurnerStrip(Burner burner) const {
-    switch (burner) {
-        case Burner::MAIN:
-            return _mainBurner;
-        case Burner::LEFT:
-            return _leftBurner;
-        case Burner::RIGHT:
-            return _rghtBurner;
-    }
-    CUAssertLog(false, "Invalid burner enumeration");
-	return _mainBurner;
-}
-
-/**
- * Sets the animation node for the given afterburner
- *
- * The model tracks the animation nodes separately from the main scene
- * graph node (even though they are childing of this node).  That is so
- * we can encapsulate the animation cycle.
- * @param burner    The enumeration to identify the afterburner
- * @param strip     The animation node for the given afterburner
- */
-void RocketModel::setBurnerStrip(Burner burner, const std::shared_ptr<cugl::Texture>& strip) {
-    switch (burner) {
-        case Burner::MAIN:
-            _mainBurner = scene2::SpriteNode::allocWithSheet(strip, 1, FIRE_FRAMES, FIRE_FRAMES);
-            if (_shipNode != nullptr) {
-                _mainBurner->setPosition(_shipNode->getContentSize().width/2.0f,
-                                         _shipNode->getContentSize().height-
-                                         _mainBurner->getContentSize().height/2.0f);
-                _shipNode->addChild(_mainBurner);
-            }
-            break;
-        case Burner::LEFT:
-            _leftBurner = scene2::SpriteNode::allocWithSheet(strip, 1, FIRE_FRAMES, FIRE_FRAMES);
-            if (_shipNode != nullptr) {
-                _leftBurner->setPosition(_shipNode->getContentSize()/2.0f);
-                _shipNode->addChild(_leftBurner);
-            }
-            break;
-        case Burner::RIGHT:
-            _rghtBurner = scene2::SpriteNode::allocWithSheet(strip, 1, FIRE_FRAMES, FIRE_FRAMES);
-            if (_shipNode != nullptr) {
-                _rghtBurner->setPosition(_shipNode->getContentSize()/2.0f);
-                _shipNode->addChild(_rghtBurner);
-            }
-            break;
-        default:
-            CUAssertLog(false, "Invalid burner enumeration");
-    }
-}
-
-/**
- * Returns the key for the sound to accompany the given afterburner
- *
- * The key should either refer to a valid sound loaded in the AssetManager or
- * be empty ("").  If the key is "", then no sound will play.
- *
- * @param burner    The enumeration to identify the afterburner
- *
- * @return the key for the sound to accompany the given afterburner
- */
-const std::string& RocketModel::getBurnerSound(Burner burner) const {
-    switch (burner) {
-        case Burner::MAIN:
-            return _mainSound;
-        case Burner::LEFT:
-            return _leftSound;
-        case Burner::RIGHT:
-            return _rghtSound;
-    }
-    CUAssertLog(false, "Invalid burner enumeration");
-	return _mainSound;
-}
-
-/**
- * Sets the key for the sound to accompany the given afterburner
- *
- * The key should either refer to a valid sound loaded in the AssetManager or
- * be empty ("").  If the key is "", then no sound will play.
- *
- * @param burner    The enumeration to identify the afterburner
- * @param key       The key for the sound to accompany the main afterburner
- */
-void RocketModel::setBurnerSound(Burner burner, const std::string& key) {
-    switch (burner) {
-        case Burner::MAIN:
-            _mainSound = key;
-            break;
-        case Burner::LEFT:
-            _leftSound = key;
-            break;
-        case Burner::RIGHT:
-            _rghtSound = key;
-            break;
-        default:
-            CUAssertLog(false, "Invalid burner enumeration");
-    }
-}
-
-/**
- * Animates the given burner.
- *
- * If the animation is not active, it will reset to the initial animation frame.
- *
- * @param burner    The reference to the rocket burner
- * @param on        Whether the animation is active
- */
-void RocketModel::animateBurner(Burner burner, bool on) {
-    scene2::SpriteNode* node;
-    bool*  cycle;
-
-    switch (burner) {
-        case Burner::MAIN:
-            node  = _mainBurner.get();
-            cycle = &_mainCycle;
-            break;
-        case Burner::LEFT:
-            node  = _leftBurner.get();
-            cycle = &_leftCycle;
-            break;
-        case Burner::RIGHT:
-            node  = _rghtBurner.get();
-            cycle = &_rghtCycle;
-            break;
-    }
-    
-    if (on) {
-        // Turn on the flames and go back and forth
-        if (node->getFrame() == 0 || node->getFrame() == 1) {
-            *cycle = true;
-        } else if (node->getFrame() == node->getSpan()-1) {
-            *cycle = false;
-        }
-        
-        // Increment
-        if (*cycle) {
-            node->setFrame(node->getFrame()+1);
-        } else {
-            node->setFrame(node->getFrame()-1);
-        }
-   } else {
-        node->setFrame(0);
-    }
-}
+///**
+// * Returns the animation node for the given afterburner
+// *
+// * The model tracks the animation nodes separately from the main scene
+// * graph node (even though they are childing of this node).  That is so
+// * we can encapsulate the animation cycle.
+// *
+// * @param  burner   The enumeration to identify the afterburner
+// *
+// * @return the animation node for the given afterburner
+// */
+//const std::shared_ptr<scene2::SpriteNode>& CannonModel::getBurnerStrip(Burner burner) const {
+//    switch (burner) {
+//        case Burner::MAIN:
+//            return _mainBurner;
+//        case Burner::LEFT:
+//            return _leftBurner;
+//        case Burner::RIGHT:
+//            return _rghtBurner;
+//    }
+//    CUAssertLog(false, "Invalid burner enumeration");
+//	return _mainBurner;
+//}
+//
+///**
+// * Sets the animation node for the given afterburner
+// *
+// * The model tracks the animation nodes separately from the main scene
+// * graph node (even though they are childing of this node).  That is so
+// * we can encapsulate the animation cycle.
+// * @param burner    The enumeration to identify the afterburner
+// * @param strip     The animation node for the given afterburner
+// */
+//void CannonModel::setBurnerStrip(Burner burner, const std::shared_ptr<cugl::Texture>& strip) {
+//    switch (burner) {
+//        case Burner::MAIN:
+//            _mainBurner = scene2::SpriteNode::allocWithSheet(strip, 1, FIRE_FRAMES, FIRE_FRAMES);
+//            if (_cannonNode != nullptr) {
+//                _mainBurner->setPosition(_cannonNode->getContentSize().width/2.0f,
+//                                         _cannonNode->getContentSize().height-
+//                                         _mainBurner->getContentSize().height/2.0f);
+//                _cannonNode->addChild(_mainBurner);
+//            }
+//            break;
+//        case Burner::LEFT:
+//            _leftBurner = scene2::SpriteNode::allocWithSheet(strip, 1, FIRE_FRAMES, FIRE_FRAMES);
+//            if (_cannonNode != nullptr) {
+//                _leftBurner->setPosition(_cannonNode->getContentSize()/2.0f);
+//                _cannonNode->addChild(_leftBurner);
+//            }
+//            break;
+//        case Burner::RIGHT:
+//            _rghtBurner = scene2::SpriteNode::allocWithSheet(strip, 1, FIRE_FRAMES, FIRE_FRAMES);
+//            if (_cannonNode != nullptr) {
+//                _rghtBurner->setPosition(_cannonNode->getContentSize()/2.0f);
+//                _cannonNode->addChild(_rghtBurner);
+//            }
+//            break;
+//        default:
+//            CUAssertLog(false, "Invalid burner enumeration");
+//    }
+//}
+//
+///**
+// * Returns the key for the sound to accompany the given afterburner
+// *
+// * The key should either refer to a valid sound loaded in the AssetManager or
+// * be empty ("").  If the key is "", then no sound will play.
+// *
+// * @param burner    The enumeration to identify the afterburner
+// *
+// * @return the key for the sound to accompany the given afterburner
+// */
+//const std::string& CannonModel::getBurnerSound(Burner burner) const {
+//    switch (burner) {
+//        case Burner::MAIN:
+//            return _mainSound;
+//        case Burner::LEFT:
+//            return _leftSound;
+//        case Burner::RIGHT:
+//            return _rghtSound;
+//    }
+//    CUAssertLog(false, "Invalid burner enumeration");
+//	return _mainSound;
+//}
+//
+///**
+// * Sets the key for the sound to accompany the given afterburner
+// *
+// * The key should either refer to a valid sound loaded in the AssetManager or
+// * be empty ("").  If the key is "", then no sound will play.
+// *
+// * @param burner    The enumeration to identify the afterburner
+// * @param key       The key for the sound to accompany the main afterburner
+// */
+//void CannonModel::setBurnerSound(Burner burner, const std::string& key) {
+//    switch (burner) {
+//        case Burner::MAIN:
+//            _mainSound = key;
+//            break;
+//        case Burner::LEFT:
+//            _leftSound = key;
+//            break;
+//        case Burner::RIGHT:
+//            _rghtSound = key;
+//            break;
+//        default:
+//            CUAssertLog(false, "Invalid burner enumeration");
+//    }
+//}
+//
+///**
+// * Animates the given burner.
+// *
+// * If the animation is not active, it will reset to the initial animation frame.
+// *
+// * @param burner    The reference to the rocket burner
+// * @param on        Whether the animation is active
+// */
+//void CannonModel::animateBurner(Burner burner, bool on) {
+//    scene2::SpriteNode* node;
+//    bool*  cycle;
+//
+//    switch (burner) {
+//        case Burner::MAIN:
+//            node  = _mainBurner.get();
+//            cycle = &_mainCycle;
+//            break;
+//        case Burner::LEFT:
+//            node  = _leftBurner.get();
+//            cycle = &_leftCycle;
+//            break;
+//        case Burner::RIGHT:
+//            node  = _rghtBurner.get();
+//            cycle = &_rghtCycle;
+//            break;
+//    }
+//
+//    if (on) {
+//        // Turn on the flames and go back and forth
+//        if (node->getFrame() == 0 || node->getFrame() == 1) {
+//            *cycle = true;
+//        } else if (node->getFrame() == node->getSpan()-1) {
+//            *cycle = false;
+//        }
+//        
+//        // Increment
+//        if (*cycle) {
+//            node->setFrame(node->getFrame()+1);
+//        } else {
+//            node->setFrame(node->getFrame()-1);
+//        }
+//   } else {
+//        node->setFrame(0);
+//    }
+//}
 
 /**
  * Sets the ratio of the ship sprite to the physics body
@@ -370,10 +372,10 @@ void RocketModel::animateBurner(Burner burner, bool on) {
  *
  * @param scale The ratio of the ship sprite to the physics body
  */
-void RocketModel::setDrawScale(float scale) {
+void CannonModel::setDrawScale(float scale) {
     _drawscale = scale;
-    if (_shipNode != nullptr) {
-        _shipNode->setPosition(getPosition()*_drawscale);
+    if (_cannonNode != nullptr) {
+        _cannonNode->setPosition(getPosition()*_drawscale);
     }
 }
 

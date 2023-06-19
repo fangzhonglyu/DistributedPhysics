@@ -124,7 +124,8 @@ void RocketApp::preUpdate(float timestep){
     }
     else if (!_loaded) {
         _loading.dispose(); // Disables the input listeners in this mode
-        _gameplay.init(_assets);
+        // set game as host for now
+        _gameplay.init(_assets,true);
         _loaded = true;
     }
     

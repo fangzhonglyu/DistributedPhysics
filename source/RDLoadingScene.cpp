@@ -79,6 +79,7 @@ void LoadingScene::dispose() {
     }
     _button = nullptr;
     _brand = nullptr;
+    _bar->removeFromParent();
     _bar = nullptr;
     _assets = nullptr;
     _progress = 0.0f;
