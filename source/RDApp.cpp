@@ -47,9 +47,11 @@ void RocketApp::onStartup() {
     // Create a "loading" screen
     _loaded = false;
     _loading.init(_assets);
+    
     // Que up the other assets
     AudioEngine::start(24);
     _assets->loadDirectoryAsync("json/assets.json",nullptr);
+    
     Application::onStartup(); // YOU MUST END with call to parent
 }
 

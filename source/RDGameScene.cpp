@@ -295,11 +295,12 @@ void GameScene::reset() {
     
     setComplete(false);
     populate();
+    Application::get()->resetLeftOver();
 }
 
 std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
     // Pick a crate and random and generate the key
-    int indx = (std::rand() % 2 == 0 ? 2 : 1);
+    int indx = 1; //(std::rand() % 2 == 0 ? 2 : 1);
     std::stringstream ss;
     ss << CRATE_PREFIX << (indx < 10 ? "0" : "" ) << indx;
 
@@ -554,9 +555,10 @@ void GameScene::fixedUpdate() {
  * @param  delta    Number of seconds since last animation frame
  */
 void GameScene::update(float dt) {
-    preUpdate(dt);
-    _world->update(dt);
-    postUpdate(<#float dt#>);
+    return;
+//    preUpdate(dt);
+//    _world->update(dt);
+//    postUpdate(<#float dt#>);
 }
 #endif
 

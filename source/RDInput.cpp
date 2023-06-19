@@ -151,9 +151,8 @@ void RocketInput::update(float dt) {
     float pitch = atan2(-acc.x, sqrt(acc.y*acc.y + acc.z*acc.z));
     
     // Check if we turned left or right
-    left |= (pitch > EVENT_ACCEL_THRESH);
-    rght |= (pitch < -EVENT_ACCEL_THRESH);
-    up   |= _keyUp;
+    up   |= (pitch > EVENT_ACCEL_THRESH);
+    down |= (pitch < -EVENT_ACCEL_THRESH);
     
 #endif
 
