@@ -257,7 +257,7 @@ public:
      * @param timestep  The amount of time (in seconds) since the last frame
      */
     void update(float timestep);
-#endif 
+#endif
 
     /**
      * Resets the status of the game so that we can play again.
