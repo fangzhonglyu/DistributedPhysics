@@ -504,6 +504,11 @@ netdata GameScene::packFire(Uint64 timestamp){
     return data;
 }
 
+union {
+    float f;
+    uint32_t u;
+} f2u;
+
 void GameScene::processFire(netdata data){
     CUAssert(data.flag == FIRE_INPUT_FLAG);
     if(data.timestamp < _counter){
@@ -523,8 +528,11 @@ void GameScene::processFire(netdata data){
         crate->setLinearVelocity(forward*50*firePower);
         CULog("Cannon %d fire at %llu, received by: %llu",isHost ? 1 : 2, _counter,data.receivedBy);
         
-        
-        CULog("Angle: %u, power: %u",(uint32_t*)(&angle),(uint32_t*)(&firePower));
+        f2u.f = firePower;
+        uint32_t fpu = f2u.u;
+        f2u.f = angle;
+        uint32_t au = f2u.u;
+        CULog("Angle: %u, power: %u",au,fpu);
     }
 }
 
