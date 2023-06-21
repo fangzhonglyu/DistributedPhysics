@@ -176,7 +176,7 @@ void RocketInput::update(float dt) {
     Timestamp curr;
     if(_keyUp){
         _firePower = SDL_min(1.0f,curr.ellapsedMillis(_timestamp)/FIRE_CHARGE_TIME);
-    }noo
+    }
     if(_fired){
         _firePower = 0.f;
     }
