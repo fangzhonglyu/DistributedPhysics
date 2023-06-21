@@ -522,7 +522,9 @@ void GameScene::processFire(netdata data){
         //crate->setBodyType(b2_kinematicBody);
         crate->setLinearVelocity(forward*50*firePower);
         CULog("Cannon %d fire at %llu, received by: %llu",isHost ? 1 : 2, _counter,data.receivedBy);
-        CULog("Angle: %f, power: %f",angle,firePower);
+        
+        
+        CULog("Angle: %u, power: %u",(uint32_t*)(&angle),(uint32_t*)(&firePower));
     }
 }
 
