@@ -25,6 +25,15 @@
         },
         "flames-left": {
             "file":     "textures/flames-left.png"
+        },
+        "button": {
+            "file":  "textures/button.png"
+        },
+        "frame": {
+            "file":  "textures/frame.png"
+        },
+        "left": {
+            "file":  "textures/left_arrow.png"
         }
 	},
     "jsons": {
