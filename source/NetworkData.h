@@ -13,6 +13,8 @@ using namespace cugl;
 
 #define FIRE_INPUT_FLAG 1
 #define STATE_SYNC_FLAG 2
+#define RESET_FLAG 3
+#define ROCKET_FLAG 4
 
 typedef struct {
     /** Discrete timestamp for the time of this message for network synchronization. */

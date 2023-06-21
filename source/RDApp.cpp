@@ -151,7 +151,7 @@ void RocketApp::preUpdate(float timestep){
     else if (_status == GAME){
         if(_gameplay.isComplete()){
             _gameplay.reset();
-            _status == MENU;
+            _status = MENU;
             _mainmenu.setActive(true);
         }
         _gameplay.preUpdate(timestep);

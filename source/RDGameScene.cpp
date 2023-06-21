@@ -522,6 +522,7 @@ void GameScene::processFire(netdata data){
         //crate->setBodyType(b2_kinematicBody);
         crate->setLinearVelocity(forward*50*firePower);
         CULog("Cannon %d fire at %llu, received by: %llu",isHost ? 1 : 2, _counter,data.receivedBy);
+        CULog("Angle: %f, power: %f",angle,firePower);
     }
 }
 
@@ -581,8 +582,8 @@ void GameScene::processData(const std::string source,
     if(source == _network->getUUID()){
         return;
     }
-    CULog(source.c_str());
-    CULog("gotdata");
+//    CULog(source.c_str());
+//    CULog("gotdata");
     _deserializer.reset();
     _deserializer.receive(data);
     netdata msg;
