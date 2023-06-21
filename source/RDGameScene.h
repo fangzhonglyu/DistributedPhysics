@@ -87,6 +87,8 @@ protected:
     
     cugl::net::NetcodeDeserializer _deserializer;
     
+    Uint64 _counter;
+    
 #pragma mark Internal Object Management
     
     std::shared_ptr<cugl::physics2::BoxObstacle> addCrateAt(cugl::Vec2 pos);
@@ -125,6 +127,30 @@ protected:
      * ratios
      */
     cugl::Size computeActiveSize() const;
+    
+private:
+    /**
+     * Processes data sent over the network.
+     *
+     * Once connection is established, all data sent over the network consistes of
+     * byte vectors. This function is a call back function to process that data.
+     * Note that this function may be called *multiple times* per animation frame,
+     * as the messages can come from several sources.
+     *
+     * Typically this is where players would communicate their names after being
+     * connected. In this lab, we only need it to do one thing: communicate that
+     * the host has started the game.
+     *
+     * @param source    The UUID of the sender
+     * @param data      The data received
+     */
+    void processData(const std::string source, const std::vector<std::byte>& data);
+    
+    void updateNet();
+    
+    bool checkConnection();
+    
+    void transmitNetdata(const netdata data);
     
 public:
 #pragma mark -
@@ -288,7 +314,7 @@ public:
     
     void processFire(netdata data);
     
-    void processData();
+    void processCache();
     
 #pragma mark -
 #pragma mark Collision Handling

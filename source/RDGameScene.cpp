@@ -254,6 +254,8 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     _serializer.reset();
     _deserializer.reset();
     
+    _counter = 0;
+    
     // XNA nostalgia
     Application::get()->setClearColor(Color4f::CORNFLOWER);
     return true;
@@ -497,18 +499,17 @@ netdata GameScene::packFire(Uint64 timestamp){
     float firepower = _input.getFirePower();
     _serializer.writeFloat(firepower);
     data.data = _serializer.serialize();
-    float delayMs = (timestamp-Application::get()->getUpdateCount())*FIXED_TIMESTEP_S*1000;
+    float delayMs = (timestamp-_counter)*FIXED_TIMESTEP_S*1000;
     CULog("Fire input at angle %f, power %f, cached for %llu, added delay of %.2fms",angle,firepower,timestamp,delayMs);
     return data;
 }
 
 void GameScene::processFire(netdata data){
     CUAssert(data.flag == FIRE_INPUT_FLAG);
-    Uint64 counter = Application::get()->getUpdateCount();
-    if(data.timestamp < counter){
+    if(data.timestamp < _counter){
         CULogError("Simulation Corrupt	ed, State Synchronization Needed");
     }
-    else if(data.timestamp == counter){
+    else if(data.timestamp == _counter){
         _deserializer.reset();
         _deserializer.receive(data.data);
         bool isHost = _deserializer.readBool();
@@ -520,19 +521,16 @@ void GameScene::processFire(netdata data){
         auto crate = addCrateAt(pos);
         //crate->setBodyType(b2_kinematicBody);
         crate->setLinearVelocity(forward*50*firePower);
-        CULog("Cannon %d fire at %llu, received by: %llu",isHost ? 1 : 2, Application::get()->getUpdateCount(),data.receivedBy);
+        CULog("Cannon %d fire at %llu, received by: %llu",isHost ? 1 : 2, _counter,data.receivedBy);
     }
-    
-   
 }
 
-void GameScene::processData(){
-    Uint64 counter = Application::get()->getUpdateCount();
+void GameScene::processCache(){
+    
     if(_netCache.isEmpty()){
         return;
     }
-    
-    while(!_netCache.isEmpty() && _netCache.peek().timestamp <= counter){
+    while(!_netCache.isEmpty() && _netCache.peek().timestamp <= _counter){
         netdata next = _netCache.pop();
         switch (next.flag) {
             case FIRE_INPUT_FLAG:
@@ -546,8 +544,49 @@ void GameScene::processData(){
     }
 }
 
+bool GameScene::checkConnection() {
+    auto state = _network->getState();
+    if (state == cugl::net::NetcodeConnection::State::CONNECTED) {
+        return true;
+    }
+    else {
+        _network = nullptr;
+        _complete = true;
+        return false;
+    }
+}
 
+void GameScene::updateNet(){
+    if (_network) {
+        _network->receive([this](const std::string source,
+                                 const std::vector<std::byte>& data) {
+            processData(source, data);
+        });
+        checkConnection();
+    }
+}
 
+void GameScene::transmitNetdata(const netdata data){
+    _serializer.reset();
+    _serializer.writeUint64(data.timestamp);
+    _serializer.writeUint32(data.flag);
+    auto arr = _serializer.serialize();
+    arr.insert(std::end(arr), std::begin(data.data), std::end(data.data));
+    _netCache.push(data, _counter);
+    _network->broadcast(arr);
+}
+
+void GameScene::processData(const std::string source,
+                            const std::vector<std::byte>& data) {
+    _deserializer.reset();
+    _deserializer.receive(data);
+    netdata msg;
+    msg.timestamp = _deserializer.readUint64();
+    msg.sourceID = source;
+    msg.flag = _deserializer.readUint32();
+    msg.data = { data.begin() + 12, data.end()};
+    _netCache.push(msg, _counter);
+}
 
 #pragma mark -
 #pragma mark Physics Handling
@@ -555,6 +594,8 @@ void GameScene::processData(){
 #if USING_PHYSICS
 void GameScene::preUpdate(float dt) {
     _input.update(dt);
+    
+    updateNet();
     
     if(_input.getFirePower()>0.f){
         _chargeBar->setVisible(true);
@@ -573,11 +614,12 @@ void GameScene::preUpdate(float dt) {
     }
     
     if (_input.didFire()) {
-        _netCache.push(packFire(Application::get()->getUpdateCount()+20));
+        transmitNetdata(packFire(_counter+20));
     }
     
     auto cannon = _isHost ? _cannon1 : _cannon2;
     cannon->setAngle(_input.getVertical() * cannon->getTurnRate() + cannon->getAngle());
+    
 
 }
 
@@ -586,8 +628,9 @@ void GameScene::postUpdate(float dt) {
 }
 
 void GameScene::fixedUpdate() {
-    processData();
+    processCache();
     _world->update(FIXED_TIMESTEP_S);
+    _counter++;
 }
 
 #else

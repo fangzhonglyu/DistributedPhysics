@@ -29,6 +29,8 @@ typedef struct {
      */
     Uint8 flag;
     
+    std::string sourceID;
+    
     /** The message body */
     std::vector<std::byte> data;
     
@@ -76,8 +78,8 @@ public:
         return temp;
     }
     
-    void push(netdata data){
-        data.receivedBy = Application::get()->getUpdateCount();
+    void push(netdata data, Uint64 received){
+        data.receivedBy = received;
         _netCache.push(data);
     }
     
