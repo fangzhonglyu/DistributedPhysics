@@ -39,18 +39,24 @@ void RocketApp::onStartup() {
     Input::activate<Mouse>();
 #endif
     
+    Input::activate<Keyboard>();
+    Input::activate<TextInput>();
+    
     _assets->attach<Font>(FontLoader::alloc()->getHook());
     _assets->attach<Texture>(TextureLoader::alloc()->getHook());
     _assets->attach<Sound>(SoundLoader::alloc()->getHook());
     _assets->attach<scene2::SceneNode>(Scene2Loader::alloc()->getHook());
+    _assets->attach<JsonValue>(JsonLoader::alloc()->getHook());
+    _assets->attach<WidgetValue>(WidgetLoader::alloc()->getHook());
 
-    // Create a "loading" screen
-    _loaded = false;
     _loading.init(_assets);
+    _status = LOAD;
     
     // Que up the other assets
     AudioEngine::start(24);
     _assets->loadDirectoryAsync("json/assets.json",nullptr);
+    
+    cugl::net::NetworkLayer::start(net::NetworkLayer::Log::INFO);
     
     Application::onStartup(); // YOU MUST END with call to parent
 }
@@ -67,8 +73,10 @@ void RocketApp::onStartup() {
  * causing the application to be deleted.
  */
 void RocketApp::onShutdown() {
-    _loading.dispose();
     _gameplay.dispose();
+    _mainmenu.dispose();
+    _hostgame.dispose();
+    _joingame.dispose();
     _assets = nullptr;
     _batch = nullptr;
     
@@ -119,29 +127,40 @@ void RocketApp::onResume() {
 #if USING_PHYSICS
 
 void RocketApp::preUpdate(float timestep){
-    if (!_loaded && _loading.isActive()) {
+    if (_status == LOAD && _loading.isActive()) {
         _loading.update(0.01f);
     }
-    else if (!_loaded) {
+    else if (_status == LOAD) {
         _loading.dispose(); // Disables the input listeners in this mode
-        // set game as host for now
-        _gameplay.init(_assets,true);
-        _loaded = true;
+        _mainmenu.init(_assets);
+        _mainmenu.setActive(true);
+        _hostgame.init(_assets);
+        _joingame.init(_assets);
+        _gameplay.init(_assets);
+        _status = MENU;
     }
-    
-    if (_loaded) {
+    else if (_status == MENU) {
+        updateMenuScene(timestep);
+    }
+    else if (_status == HOST){
+        updateHostScene(timestep);
+    }
+    else if (_status == CLIENT){
+        updateClientScene(timestep);
+    }
+    else if (_status == GAME){
         _gameplay.preUpdate(timestep);
     }
 }
 
 void RocketApp::postUpdate(float timestep) {
-    if (_loaded) {
+    if (_status == GAME) {
         _gameplay.postUpdate(timestep);
     }
 }
 
 void RocketApp::fixedUpdate() {
-    if (_loaded) {
+    if (_status == GAME) {
         _gameplay.fixedUpdate();
     }
 }
@@ -158,20 +177,101 @@ void RocketApp::fixedUpdate() {
  * @param timestep  The amount of time (in seconds) since the last frame
  */
 void RocketApp::update(float timestep) {
-    if (!_loaded && _loading.isActive()) {
-        _loading.update(0.01f);
-    }
-    else if (!_loaded) {
-        _loading.dispose(); // Disables the input listeners in this mode
-        _gameplay.init(_assets);
-        _loaded = true;
-    }
-    else {
-        _gameplay.update(timestep);
-    }
+    //deprecated
 }
 #endif
 
+/**
+ * Inidividualized update method for the menu scene.
+ *
+ * This method keeps the primary {@link #update} from being a mess of switch
+ * statements. It also handles the transition logic from the menu scene.
+ *
+ * @param timestep  The amount of time (in seconds) since the last frame
+ */
+void RocketApp::updateMenuScene(float timestep) {
+    _mainmenu.update(timestep);
+    switch (_mainmenu.getChoice()) {
+        case MenuScene::Choice::HOST:
+            _mainmenu.setActive(false);
+            _hostgame.setActive(true);
+            _status = HOST;
+            break;
+        case MenuScene::Choice::JOIN:
+            _mainmenu.setActive(false);
+            _joingame.setActive(true);
+            _status = CLIENT;
+            break;
+        case MenuScene::Choice::NONE:
+            // DO NOTHING
+            break;
+    }
+}
+
+/**
+ * Inidividualized update method for the host scene.
+ *
+ * This method keeps the primary {@link #update} from being a mess of switch
+ * statements. It also handles the transition logic from the host scene.
+ *
+ * @param timestep  The amount of time (in seconds) since the last frame
+ */
+void RocketApp::updateHostScene(float timestep) {
+    _hostgame.update(timestep);
+    switch (_hostgame.getStatus()) {
+        case HostScene::Status::ABORT:
+            _hostgame.setActive(false);
+            _mainmenu.setActive(true);
+            _status = MENU;
+            break;
+        case HostScene::Status::START:
+            _hostgame.setActive(false);
+            _gameplay.setActive(true);
+            _status = GAME;
+            // Transfer connection ownership
+            _gameplay.setNetwork(_hostgame.getConnection());
+            _hostgame.disconnect();
+            _gameplay.setHost(true);
+            break;
+        case HostScene::Status::WAIT:
+        case HostScene::Status::IDLE:
+            // DO NOTHING
+            break;
+    }
+}
+
+/**
+ * Inidividualized update method for the client scene.
+ *
+ * This method keeps the primary {@link #update} from being a mess of switch
+ * statements. It also handles the transition logic from the client scene.
+ *
+ * @param timestep  The amount of time (in seconds) since the last frame
+ */
+void RocketApp::updateClientScene(float timestep) {
+    _joingame.update(timestep);
+    switch (_joingame.getStatus()) {
+        case ClientScene::Status::ABORT:
+            _joingame.setActive(false);
+            _mainmenu.setActive(true);
+            _status = MENU;
+            break;
+        case ClientScene::Status::START:
+            _joingame.setActive(false);
+            _gameplay.setActive(true);
+            _status = GAME;
+            // Transfer connection ownership
+            _gameplay.setNetwork(_joingame.getConnection());
+            _joingame.disconnect();
+            _gameplay.setHost(false);
+            break;
+        case ClientScene::Status::WAIT:
+        case ClientScene::Status::IDLE:
+        case ClientScene::Status::JOIN:
+            // DO NOTHING
+            break;
+    }
+}
 
 /**
  * The method called to draw the application to the screen.
@@ -183,10 +283,23 @@ void RocketApp::update(float timestep) {
  * at all. The default implmentation does nothing.
  */
 void RocketApp::draw() {
-    if (!_loaded) {
-        _loading.render(_batch);
-    } else {
-        _gameplay.render(_batch);
+    switch (_status) {
+        case LOAD:
+            _loading.render(_batch);
+            break;
+        case MENU:
+            _mainmenu.render(_batch);
+            break;
+        case HOST:
+            _hostgame.render(_batch);
+            break;
+        case CLIENT:
+            _joingame.render(_batch);
+            break;
+        case GAME:
+            _gameplay.render(_batch);
+        default:
+            break;
     }
 }
 

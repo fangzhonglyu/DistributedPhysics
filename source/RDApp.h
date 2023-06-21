@@ -16,11 +16,23 @@
 #include <cugl/cugl.h>
 #include "RDGameScene.h"
 #include "RDLoadingScene.h"
+#include "NLMenuScene.h"
+#include "NLClientScene.h"
+#include "NLHostScene.h"
 
 /**
  * This class represents the application root for the ship demo.
  */
 class RocketApp : public cugl::Application {
+    
+enum Status {
+    LOAD,
+    MENU,
+    HOST,
+    CLIENT,
+    GAME
+};
+
 protected:
     /** The global sprite batch for drawing (only want one of these) */
     std::shared_ptr<cugl::SpriteBatch> _batch;
@@ -33,10 +45,18 @@ protected:
     /** The controller for the loading screen */
     LoadingScene _loading;
     
+    MenuScene _mainmenu;
+    
+    ClientScene _joingame;
+    
+    HostScene _hostgame;
+    
     /** Whether or not we have finished loading all assets */
     bool _loaded;
     
     NetworkController _network;
+    
+    Status _status;
     
 public:
 #pragma mark Constructors
@@ -137,6 +157,36 @@ public:
      */
     virtual void update(float timestep) override;
 #endif
+    
+    /**
+     * Inidividualized update method for the menu scene.
+     *
+     * This method keeps the primary {@link #update} from being a mess of switch
+     * statements. It also handles the transition logic from the menu scene.
+     *
+     * @param timestep  The amount of time (in seconds) since the last frame
+     */
+    void updateMenuScene(float timestep);
+
+    /**
+     * Inidividualized update method for the host scene.
+     *
+     * This method keeps the primary {@link #update} from being a mess of switch
+     * statements. It also handles the transition logic from the host scene.
+     *
+     * @param timestep  The amount of time (in seconds) since the last frame
+     */
+    void updateHostScene(float timestep);
+    
+    /**
+     * Inidividualized update method for the client scene.
+     *
+     * This method keeps the primary {@link #update} from being a mess of switch
+     * statements. It also handles the transition logic from the client scene.
+     *
+     * @param timestep  The amount of time (in seconds) since the last frame
+     */
+    void updateClientScene(float timestep);
 
     /**
      * The method called to draw the application to the screen.

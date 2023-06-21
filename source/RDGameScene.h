@@ -81,6 +81,8 @@ protected:
     
     NetCache _netCache;
     
+    std::shared_ptr<cugl::net::NetcodeConnection> _network;
+    
     cugl::net::NetcodeSerializer _serializer;
     
     cugl::net::NetcodeDeserializer _deserializer;
@@ -162,7 +164,7 @@ public:
      *
      * @return true if the controller is initialized properly, false otherwise.
      */
-    bool init(const std::shared_ptr<cugl::AssetManager>& assets, bool isHost);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets);
 
     /**
      * Initializes the controller contents, and starts the game
@@ -180,7 +182,7 @@ public:
      *
      * @return  true if the controller is initialized properly, false otherwise.
      */
-    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect, bool isHost);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect);
     
     /**
      * Initializes the controller contents, and starts the game
@@ -199,7 +201,15 @@ public:
      *
      * @return  true if the controller is initialized properly, false otherwise.
      */
-    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect, const cugl::Vec2 gravity, bool isHost);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect, const cugl::Vec2 gravity);
+    
+    void setHost(bool isHost){
+        _isHost = isHost;
+    }
+    
+    void setNetwork(const std::shared_ptr<cugl::net::NetcodeConnection> network){
+        _network = network;
+    }
     
     
 #pragma mark -

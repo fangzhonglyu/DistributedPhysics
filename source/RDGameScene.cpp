@@ -161,8 +161,8 @@ _isHost(false)
  *
  * @return true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, bool isHost) {
-    return init(assets,Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY),isHost);
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets) {
+    return init(assets,Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
 }
 
 /**
@@ -181,8 +181,8 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, bool isHost) {
  *
  * @return  true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, bool isHost) {
-    return init(assets,rect,Vec2(0,DEFAULT_GRAVITY),isHost);
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect) {
+    return init(assets,rect,Vec2(0,DEFAULT_GRAVITY));
 }
 
 /**
@@ -202,7 +202,7 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
  *
  * @return  true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const Vec2 gravity, bool isHost) {
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const Vec2 gravity) {
     Size dimen = computeActiveSize();
 
     if (assets == nullptr) {
@@ -210,8 +210,6 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     } else if (!Scene2::init(dimen)) {
         return false;
     }
-    
-    _isHost = isHost;
     
     // Start up the input handler
     _assets = assets;
