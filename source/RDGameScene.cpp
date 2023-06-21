@@ -507,13 +507,13 @@ netdata GameScene::packFire(Uint64 timestamp){
 void GameScene::processFire(netdata data){
     CUAssert(data.flag == FIRE_INPUT_FLAG);
     if(data.timestamp < _counter){
-        CULogError("Simulation Corrupt	ed, State Synchronization Needed");
+        CULogError("Simulation Corrupted, State Synchronization Needed");
     }
     else if(data.timestamp == _counter){
         _deserializer.reset();
         _deserializer.receive(data.data);
         bool isHost = _deserializer.readBool();
-        auto cannon = _isHost ? _cannon1 : _cannon2;
+        auto cannon = isHost ? _cannon1 : _cannon2;
         float angle = _deserializer.readFloat() + M_PI_2;
         float firePower = _deserializer.readFloat();
         Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
@@ -572,19 +572,24 @@ void GameScene::transmitNetdata(const netdata data){
     _serializer.writeUint32(data.flag);
     auto arr = _serializer.serialize();
     arr.insert(std::end(arr), std::begin(data.data), std::end(data.data));
-    _netCache.push(data, _counter);
+    //_netCache.push(data, _counter);
     _network->broadcast(arr);
 }
 
 void GameScene::processData(const std::string source,
                             const std::vector<std::byte>& data) {
+    if(source == _network->getUUID()){
+        return;
+    }
+    CULog(source.c_str());
+    CULog("gotdata");
     _deserializer.reset();
     _deserializer.receive(data);
     netdata msg;
     msg.timestamp = _deserializer.readUint64();
     msg.sourceID = source;
     msg.flag = _deserializer.readUint32();
-    msg.data = { data.begin() + 12, data.end()};
+    msg.data = { data.begin() + 14, data.end()};
     _netCache.push(msg, _counter);
 }
 
