@@ -53,9 +53,9 @@ typedef struct {
 struct compareTimestamp{
     bool operator()(netdata const& data1, netdata const&data2){
         if(data1.flag != data2.flag){
-            return data1.flag >= data2.flag;
+            return data1.flag > data2.flag;
         }
-        return data1.timestamp >= data2.timestamp;
+        return data1.timestamp > data2.timestamp;
     }
 };
 
