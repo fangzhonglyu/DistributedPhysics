@@ -215,6 +215,8 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     _assets = assets;
     _input.init();
     
+    //_writer = _writer->alloc("log.txt");
+    
     // IMPORTANT: SCALING MUST BE UNIFORM
     // This means that we cannot change the aspect ratio of the physics world
     // Shift to center if a bad fit
@@ -245,6 +247,9 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     addChild(_winnode);
     addChild(_chargeBar);
     
+    _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
+    _world->update(FIXED_TIMESTEP_S);
+    
     populate();
     _active = true;
     _complete = false;
@@ -274,6 +279,8 @@ void GameScene::dispose() {
         _winnode = nullptr;
         _complete = false;
         _debug = false;
+        _writer->flush();
+        _writer->close();
         Scene2::dispose();
     }
 }
@@ -289,10 +296,16 @@ void GameScene::dispose() {
  */
 void GameScene::reset() {
     CULog("reset");
+    _writer->writeLine("reset");
+    _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
+    _netCache.clear();
     _world->clear();
+    _world->getWorld()->ClearForces();
+    _world->garbageCollect();
+    _world->update(FIXED_TIMESTEP_S);
+    _world->update(FIXED_TIMESTEP_S);
     _worldnode->removeAllChildren();
     _debugnode->removeAllChildren();
-    
     setComplete(false);
     populate();
     Application::get()->resetLeftOver();
@@ -339,7 +352,7 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
 void GameScene::populate() {
     
     // have to completely reset the world
-    _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
+    //_world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
     _world->activateCollisionCallbacks(true);
     _world->onBeginContact = [this](b2Contact* contact) {
         beginContact(contact);
@@ -417,41 +430,42 @@ void GameScene::populate() {
     image  = _assets->get<Texture>(ROCK_TEXTURE);
     Size canSize(image->getSize()/_scale);
     
-    _cannon1 = CannonModel::alloc(canPos1,canSize,DEFAULT_TURN_RATE);
-    _cannon1->setBodyType(b2BodyType::b2_staticBody);
-    _cannon1->setDrawScale(_scale);
-    _cannon1->setAngle(-M_PI_2);
-    _cannon1->setDebugColor(DYNAMIC_COLOR);
-    _cannon1->setSensor(true);
-    //_rocket->setBodyType(b2BodyType::b2_kinematicBody);
+//    _cannon1 = CannonModel::alloc(canPos1,canSize,DEFAULT_TURN_RATE);
+//    _cannon1->setBodyType(b2BodyType::b2_staticBody);
+//    _cannon1->setDrawScale(_scale);
+//    _cannon1->setAngle(-M_PI_2);
+//    _cannon1->setDebugColor(DYNAMIC_COLOR);
     
-    auto cannon1Node = scene2::PolygonNode::allocWithTexture(image);
-	cannon1Node->setAnchor(Vec2::ANCHOR_CENTER);
-	_cannon1->setCannonNode(cannon1Node);
+    _cannon1 = scene2::PolygonNode::allocWithTexture(image);
+    _cannon1->setAnchor(Vec2::ANCHOR_CENTER);
+    _cannon1->setPosition(canPos1*_scale);
+    _cannon1->setAngle(-M_PI_2);
+	//_cannon1->setCannonNode(cannon1Node);
 
     // Create the polygon node (empty, as the model will initialize)
-    _worldnode->addChild(cannon1Node);
-    _cannon1->setDebugScene(_debugnode);
-    _world->addObstacle(_cannon1);
+    _worldnode->addChild(_cannon1);
+    //_cannon1->setDebugScene(_debugnode);
+    //_world->addObstacle(_cannon1);
     
 #pragma mark : Cannon2
     Vec2 canPos2 = ((Vec2)CAN2_POS);
     image  = _assets->get<Texture>(ROCK_TEXTURE);
     
-    _cannon2 = CannonModel::alloc(canPos2,canSize,-DEFAULT_TURN_RATE);
-    _cannon2->setBodyType(b2BodyType::b2_staticBody);
-    _cannon2->setDrawScale(_scale);
+    _cannon2 = scene2::PolygonNode::allocWithTexture(image);
+    //_cannon2->setBodyType(b2BodyType::b2_staticBody);
+    //_cannon2->setDrawScale(_scale);
+    _cannon2->setPosition(canPos2*_scale);
     _cannon2->setAngle(M_PI_2);
-    _cannon2->setDebugColor(DYNAMIC_COLOR);
-    _cannon2->setSensor(true);
+    //_cannon2->setDebugColor(DYNAMIC_COLOR);
+    //_cannon2->setSensor(true);
     
-    auto cannon2Node = scene2::PolygonNode::allocWithTexture(image);
-    cannon2Node->setAnchor(Vec2::ANCHOR_CENTER);
-    _cannon2->setCannonNode(cannon2Node);
+    //auto cannon2Node = scene2::PolygonNode::allocWithTexture(image);
+    //cannon2Node->setAnchor(Vec2::ANCHOR_CENTER);
+    //_cannon2->setCannonNode(cannon2Node);
     // Create the polygon node (empty, as the model will initialize)
-    _worldnode->addChild(cannon2Node);
-    _cannon2->setDebugScene(_debugnode);
-    _world->addObstacle(_cannon2);
+    _worldnode->addChild(_cannon2);
+    //_cannon2->setDebugScene(_debugnode);
+    //_world->addObstacle(_cannon2);
 }
 
 /**
@@ -499,8 +513,16 @@ netdata GameScene::packFire(Uint64 timestamp){
     float firepower = _input.getFirePower();
     _serializer.writeFloat(firepower);
     data.data = _serializer.serialize();
-    float delayMs = (timestamp-_counter)*FIXED_TIMESTEP_S*1000;
-    CULog("Fire input at angle %f, power %f, cached for %llu, added delay of %.2fms",angle,firepower,timestamp,delayMs);
+    //float delayMs = (timestamp-_counter)*FIXED_TIMESTEP_S*1000;
+    //CULog("Fire input at angle %f, power %f, cached for %llu, added delay of %.2fms",angle,firepower,timestamp,delayMs);
+    return data;
+}
+
+netdata GameScene::packReset(Uint64 timestamp){
+    netdata data;
+    data.timestamp = timestamp;
+    data.flag = FIRE_INPUT_FLAG;
+    data.data = std::vector<std::byte>();
     return data;
 }
 
@@ -512,9 +534,11 @@ union {
 void GameScene::processFire(netdata data){
     CUAssert(data.flag == FIRE_INPUT_FLAG);
     if(data.timestamp < _counter){
+        _writer->writeLine("Simulation Corrupted, State Synchronization Needed");
         CULogError("Simulation Corrupted, State Synchronization Needed");
     }
     else if(data.timestamp == _counter){
+        _deserializer.reset();
         _deserializer.reset();
         _deserializer.receive(data.data);
         bool isHost = _deserializer.readBool();
@@ -522,17 +546,17 @@ void GameScene::processFire(netdata data){
         float angle = _deserializer.readFloat() + M_PI_2;
         float firePower = _deserializer.readFloat();
         Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
-        Vec2 pos = cannon->getPosition()+1.5f*forward;
+        Vec2 pos = cannon->getPosition()/_scale+1.5f*forward;
         auto crate = addCrateAt(pos);
         //crate->setBodyType(b2_kinematicBody);
         crate->setLinearVelocity(forward*50*firePower);
-        CULog("Cannon %d fire at %llu, received by: %llu",isHost ? 1 : 2, _counter,data.receivedBy);
-        
+    
         f2u.f = firePower;
         uint32_t fpu = f2u.u;
         f2u.f = angle;
         uint32_t au = f2u.u;
-        CULog("Angle: %u, power: %u",au,fpu);
+        _writer->writeLine(cugl::strtool::format("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu));
+        CULog("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu);
     }
 }
 
@@ -543,11 +567,15 @@ void GameScene::processCache(){
     }
     while(!_netCache.isEmpty() && _netCache.peek().timestamp <= _counter){
         netdata next = _netCache.pop();
+        _writer->writeLine(cugl::strtool::format("MESSAGE at %llu, received by %llu", _counter, next.receivedBy));
+        CULog("MESSAGE at %llu, received by %llu", _counter, next.receivedBy);
         switch (next.flag) {
             case FIRE_INPUT_FLAG:
                 processFire(next);
                 break;
-                
+            case RESET_FLAG:
+                reset();
+                break;
             default:
                 CULogError("unknown flag %u", next.flag);
                 break;
@@ -611,7 +639,7 @@ void GameScene::processData(const std::string source,
 void GameScene::preUpdate(float dt) {
     _input.update(dt);
     
-    updateNet();
+    
     
     if(_input.getFirePower()>0.f){
         _chargeBar->setVisible(true);
@@ -623,7 +651,9 @@ void GameScene::preUpdate(float dt) {
 
     // Process the toggled key commands
     if (_input.didDebug()) { setDebug(!isDebug()); }
-    if (_input.didReset()) { reset(); }
+    if (_input.didReset()) {
+        transmitNetdata(packReset(_counter+20));
+    }
     if (_input.didExit()) {
         CULog("Shutting down");
         Application::get()->quit();
@@ -634,8 +664,7 @@ void GameScene::preUpdate(float dt) {
     }
     
     auto cannon = _isHost ? _cannon1 : _cannon2;
-    cannon->setAngle(_input.getVertical() * cannon->getTurnRate() + cannon->getAngle());
-    
+    cannon->setAngle(_input.getVertical() * DEFAULT_TURN_RATE + cannon->getAngle());
 
 }
 
@@ -644,6 +673,7 @@ void GameScene::postUpdate(float dt) {
 }
 
 void GameScene::fixedUpdate() {
+    updateNet();
     processCache();
     _world->update(FIXED_TIMESTEP_S);
     _counter++;
@@ -664,7 +694,7 @@ void GameScene::update(float dt) {
     return;
 //    preUpdate(dt);
 //    _world->update(dt);
-//    postUpdate(<#float dt#>);
+//    postUpdate(dt);
 }
 #endif
 

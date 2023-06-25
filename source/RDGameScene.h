@@ -27,6 +27,8 @@
 #include <cugl/cugl.h>
 #include <box2d/b2_world_callbacks.h>
 #include <vector>
+#include <format>
+#include <string>
 #include "RDRocketModel.h"
 #include "RDInput.h"
 #include "NetworkData.h"
@@ -67,9 +69,9 @@ protected:
     /** Reference to the goalDoor (for collision detection) */
     std::shared_ptr<cugl::physics2::BoxObstacle> _goalDoor;
     /** Reference to the player1 cannon */
-    std::shared_ptr<CannonModel> _cannon1;
+    std::shared_ptr<cugl::scene2::SceneNode> _cannon1;
     /** Reference to the player2 cannon */
-    std::shared_ptr<CannonModel> _cannon2;
+    std::shared_ptr<cugl::scene2::SceneNode> _cannon2;
     
     /** Host is by default the left cannon */
     bool _isHost;
@@ -88,6 +90,8 @@ protected:
     cugl::net::NetcodeDeserializer _deserializer;
     
     Uint64 _counter;
+    
+    std::shared_ptr<cugl::TextWriter> _writer;
     
 #pragma mark Internal Object Management
     
@@ -231,6 +235,7 @@ public:
     
     void setHost(bool isHost){
         _isHost = isHost;
+        _writer = _writer->alloc(isHost?"log_host.txt":"log_client.txt");
     }
     
     void setNetwork(const std::shared_ptr<cugl::net::NetcodeConnection> network){
@@ -311,6 +316,8 @@ public:
      * Packs a fire input message
      */
     netdata packFire(Uint64 timestamp);
+    
+    netdata packReset(Uint64 timestamp);
     
     void processFire(netdata data);
     
