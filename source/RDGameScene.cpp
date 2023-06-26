@@ -54,6 +54,8 @@ using namespace cugl;
 /** To automate the loading of crate files */
 #define NUM_CRATES 2
 
+#define LOG_MSGS 0
+
 // Since these appear only once, we do not care about the magic numbers.
 // In an actual game, this information would go in a data file.
 // IMPORTANT: Note that Box2D units do not equal drawing units
@@ -214,9 +216,9 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     // Start up the input handler
     _assets = assets;
     _input.init();
-    
-    //_writer = _writer->alloc("log.txt");
-    
+    _input.update(0);
+    _rand.seed(0xdeadbeef);
+
     // IMPORTANT: SCALING MUST BE UNIFORM
     // This means that we cannot change the aspect ratio of the physics world
     // Shift to center if a bad fit
@@ -279,12 +281,20 @@ void GameScene::dispose() {
         _winnode = nullptr;
         _complete = false;
         _debug = false;
-        _writer->flush();
-        _writer->close();
+        if(LOG_MSGS){
+            _writer->flush();
+            _writer->close();
+        }
         Scene2::dispose();
     }
 }
 
+void GameScene::setHost(bool isHost){
+    _isHost = isHost;
+    if(LOG_MSGS){
+        _writer = _writer->alloc(isHost?"log_host.txt":"log_client.txt");
+    }
+}
 
 #pragma mark -
 #pragma mark Level Layout
@@ -296,7 +306,10 @@ void GameScene::dispose() {
  */
 void GameScene::reset() {
     CULog("reset");
-    _writer->writeLine("reset");
+    if(LOG_MSGS){
+        _writer->writeLine("reset");
+    }
+    _rand.seed(0xdeadbeef);
     _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
     _netCache.clear();
     _world->clear();
@@ -313,7 +326,7 @@ void GameScene::reset() {
 
 std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
     // Pick a crate and random and generate the key
-    int indx = (std::rand() % 2 == 0 ? 2 : 1);
+    int indx = (_rand() % 2 == 0 ? 2 : 1);
     std::stringstream ss;
     ss << CRATE_PREFIX << (indx < 10 ? "0" : "" ) << indx;
 
@@ -418,7 +431,6 @@ void GameScene::populate() {
     addObstacle(wallobj,sprite);  // All walls share the same texture
 
 #pragma mark : Crates
-    std::srand(0xdeadbeef);
     for (int ii = 0; ii < 15; ii++) {
         // Pick a crate and random and generate the key
         Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
@@ -518,10 +530,10 @@ netdata GameScene::packFire(Uint64 timestamp){
     return data;
 }
 
-netdata GameScene::packReset(Uint64 timestamp){
+netdata GameScene::packReset(Uint64 timestamp){
     netdata data;
     data.timestamp = timestamp;
-    data.flag = FIRE_INPUT_FLAG;
+    data.flag = RESET_FLAG;
     data.data = std::vector<std::byte>();
     return data;
 }
@@ -534,8 +546,10 @@ union {
 void GameScene::processFire(netdata data){
     CUAssert(data.flag == FIRE_INPUT_FLAG);
     if(data.timestamp < _counter){
-        _writer->writeLine("Simulation Corrupted, State Synchronization Needed");
-        CULogError("Simulation Corrupted, State Synchronization Needed");
+        if(LOG_MSGS){
+            _writer->writeLine("Simulation Corrupted, State Synchronization Needed");
+            CULogError("Simulation Corrupted, State Synchronization Needed");
+        }
     }
     else if(data.timestamp == _counter){
         _deserializer.reset();
@@ -554,8 +568,11 @@ void GameScene::processFire(netdata data){
         f2u.f = firePower;
         uint32_t fpu = f2u.u;
         f2u.f = angle;
+        f2u.f = angle;
         uint32_t au = f2u.u;
-        _writer->writeLine(cugl::strtool::format("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu));
+        if(LOG_MSGS){
+            _writer->writeLine(cugl::strtool::format("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu));
+        }
         CULog("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu);
     }
 }
@@ -567,7 +584,9 @@ void GameScene::processCache(){
     }
     while(!_netCache.isEmpty() && _netCache.peek().timestamp <= _counter){
         netdata next = _netCache.pop();
-        _writer->writeLine(cugl::strtool::format("MESSAGE at %llu, received by %llu", _counter, next.receivedBy));
+        if(LOG_MSGS){
+            _writer->writeLine(cugl::strtool::format("MESSAGE at %llu, received by %llu", _counter, next.receivedBy));
+        }
         CULog("MESSAGE at %llu, received by %llu", _counter, next.receivedBy);
         switch (next.flag) {
             case FIRE_INPUT_FLAG:
@@ -639,8 +658,6 @@ void GameScene::processData(const std::string source,
 void GameScene::preUpdate(float dt) {
     _input.update(dt);
     
-    
-    
     if(_input.getFirePower()>0.f){
         _chargeBar->setVisible(true);
         _chargeBar->setProgress(_input.getFirePower());
@@ -707,19 +724,7 @@ void GameScene::update(float dt) {
  *
  * @param  contact  The two bodies that collided
  */
-void GameScene::beginContact(b2Contact* contact) {
-    b2Body* body1 = contact->GetFixtureA()->GetBody();
-    b2Body* body2 = contact->GetFixtureB()->GetBody();
-    
-    // If we hit the "win" door, we are done
-    intptr_t rptr = reinterpret_cast<intptr_t>(_cannon1.get());
-    intptr_t dptr = reinterpret_cast<intptr_t>(_goalDoor.get());
-
-    if((body1->GetUserData().pointer == rptr && body2->GetUserData().pointer == dptr) ||
-       (body1->GetUserData().pointer == dptr && body2->GetUserData().pointer == rptr)) {
-        setComplete(true);
-    }
-}
+void GameScene::beginContact(b2Contact* contact) {}
 
 /**
  * Handles any modifications necessary before collision resolution

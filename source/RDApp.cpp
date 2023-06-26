@@ -136,7 +136,7 @@ void RocketApp::preUpdate(float timestep){
         _mainmenu.setActive(true);
         _hostgame.init(_assets);
         _joingame.init(_assets);
-        _gameplay.init(_assets);
+        //_gameplay.init(_assets);
         _status = MENU;
     }
     else if (_status == MENU) {
@@ -231,6 +231,7 @@ void RocketApp::updateHostScene(float timestep) {
             break;
         case HostScene::Status::START:
             _hostgame.setActive(false);
+            _gameplay.init(_assets);
             _gameplay.setActive(true);
             _status = GAME;
             // Transfer connection ownership
@@ -263,6 +264,7 @@ void RocketApp::updateClientScene(float timestep) {
             break;
         case ClientScene::Status::START:
             _joingame.setActive(false);
+            _gameplay.init(_assets);
             _gameplay.setActive(true);
             _status = GAME;
             // Transfer connection ownership

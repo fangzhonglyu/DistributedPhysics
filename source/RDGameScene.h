@@ -29,11 +29,11 @@
 #include <vector>
 #include <format>
 #include <string>
+#include <random>
 #include "RDRocketModel.h"
 #include "RDInput.h"
 #include "NetworkData.h"
 #include "RDNetwork.h"
-
 /**
  * This class is the primary gameplay constroller for the demo.
  *
@@ -92,6 +92,8 @@ protected:
     Uint64 _counter;
     
     std::shared_ptr<cugl::TextWriter> _writer;
+    
+    std::mt19937 _rand;
     
 #pragma mark Internal Object Management
     
@@ -233,10 +235,7 @@ public:
      */
     bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect, const cugl::Vec2 gravity);
     
-    void setHost(bool isHost){
-        _isHost = isHost;
-        _writer = _writer->alloc(isHost?"log_host.txt":"log_client.txt");
-    }
+    void setHost(bool isHost);
     
     void setNetwork(const std::shared_ptr<cugl::net::NetcodeConnection> network){
         _network = network;
