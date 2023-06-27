@@ -310,13 +310,7 @@ void GameScene::reset() {
         _writer->writeLine("reset");
     }
     _rand.seed(0xdeadbeef);
-    _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
     _netCache.clear();
-    _world->clear();
-    _world->getWorld()->ClearForces();
-    _world->garbageCollect();
-    _world->update(FIXED_TIMESTEP_S);
-    _world->update(FIXED_TIMESTEP_S);
     _worldnode->removeAllChildren();
     _debugnode->removeAllChildren();
     setComplete(false);
@@ -365,7 +359,8 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
 void GameScene::populate() {
     
     // have to completely reset the world
-    //_world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
+    Timestamp start;
+    _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
     _world->activateCollisionCallbacks(true);
     _world->onBeginContact = [this](b2Contact* contact) {
         beginContact(contact);
@@ -434,7 +429,9 @@ void GameScene::populate() {
     for (int ii = 0; ii < 15; ii++) {
         // Pick a crate and random and generate the key
         Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
-        addCrateAt(boxPos);
+        for (int j = 0; j < 100; j++) {
+            addCrateAt(boxPos);
+        }
     }
 
 #pragma mark : Cannon1
@@ -478,6 +475,8 @@ void GameScene::populate() {
     _worldnode->addChild(_cannon2);
     //_cannon2->setDebugScene(_debugnode);
     //_world->addObstacle(_cannon2);
+    Timestamp end;
+    CULog("World reset in %fms",end.ellapsedMicros(start)/1000.f);
 }
 
 /**
@@ -548,8 +547,8 @@ void GameScene::processFire(netdata data){
     if(data.timestamp < _counter){
         if(LOG_MSGS){
             _writer->writeLine("Simulation Corrupted, State Synchronization Needed");
-            CULogError("Simulation Corrupted, State Synchronization Needed");
         }
+        CULogError("Simulation Corrupted, State Synchronization Needed");
     }
     else if(data.timestamp == _counter){
         _deserializer.reset();
