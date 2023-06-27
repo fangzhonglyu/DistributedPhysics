@@ -429,15 +429,12 @@ void GameScene::populate() {
     for (int ii = 0; ii < 15; ii++) {
         // Pick a crate and random and generate the key
         Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
-        for (int j = 0; j < 100; j++) {
-            addCrateAt(boxPos);
-        }
+        addCrateAt(boxPos);
     }
 
 #pragma mark : Cannon1
     Vec2 canPos1 = ((Vec2)CAN1_POS);
     image  = _assets->get<Texture>(ROCK_TEXTURE);
-    Size canSize(image->getSize()/_scale);
     
 //    _cannon1 = CannonModel::alloc(canPos1,canSize,DEFAULT_TURN_RATE);
 //    _cannon1->setBodyType(b2BodyType::b2_staticBody);

@@ -110,6 +110,10 @@ bool HostScene::init(const std::shared_ptr<cugl::AssetManager>& assets) {
     // Create the server configuration
     auto json = _assets->get<JsonValue>("server");
     _config.set(json);
+    
+    _sendCount = 0;
+    _receiveCount = 0;
+    _totalPing = 0;
 
     addChild(scene);
     setActive(false);
@@ -194,6 +198,14 @@ void HostScene::update(float timestep) {
         configureStartButton();
         if(_status == IDLE)
             _player->setText(std::to_string(_network->getNumPlayers()));
+        
+        if(_receiveCount >= PING_TEST_COUNT){
+            CULog("overall ping %fms",_totalPing/((float)_receiveCount)/2.f/1000.f);
+            _receiveCount = 0;
+        }
+        if(_network->getNumPlayers()>1 && _sendCount < PING_TEST_COUNT && _receiveCount==_sendCount){
+            sendPingTest();
+        }
     }
 }
 
@@ -213,7 +225,14 @@ void HostScene::update(float timestep) {
  */
 void HostScene::processData(const std::string source,
                             const std::vector<std::byte>& data) {
-    // No real data is handled in this scene
+    Timestamp received;
+    if(data.size() == 32 && data[0] == std::byte(111)){
+        if(source == "") return;
+        Uint64 ping = received.ellapsedMicros(_pingTimer);
+        _totalPing += ping;
+        _receiveCount ++;
+        CULog("ping from %s, %fms",source.c_str(),ping/1000.f);
+    }
 }
 
 
@@ -297,4 +316,14 @@ void HostScene::startGame() {
     _network->broadcast(bytes);
 }
 
-
+void HostScene::sendPingTest(){
+    auto bytes = std::vector<std::byte>();
+    bytes.push_back(std::byte(111));
+    for(int i = 0; i < 31; i++){
+        bytes.push_back(std::byte(i));
+    }
+    _network->broadcast(bytes);
+    _pingTimer.mark();
+    _sendCount++;
+    CULog("sending ping test %d",_sendCount);
+}

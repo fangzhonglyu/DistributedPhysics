@@ -15,6 +15,7 @@
 #include <cugl/cugl.h>
 #include <vector>
 
+#define PING_TEST_COUNT 1000
 
 /**
  * This class provides the interface to make a new game.
@@ -61,6 +62,14 @@ protected:
     
     /** The current status */
     Status _status;
+    
+    cugl::Timestamp _pingTimer;
+    
+    Uint64 _totalPing;
+    
+    int _sendCount;
+    
+    int _receiveCount;
 
 public:
 #pragma mark -
@@ -222,6 +231,8 @@ private:
      * players.
      */
     void startGame();
+    
+    void sendPingTest();
     
 };
 

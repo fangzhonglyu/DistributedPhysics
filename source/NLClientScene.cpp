@@ -231,6 +231,11 @@ void ClientScene::processData(const std::string source,
     if (data.size() == 1 && data.at(0) == std::byte(255)) {
         _status = Status::START;
     }
+    else if (data.size() == 32 && data.at(0) == std::byte(111)){
+        if(source != ""){
+            _network->broadcast(data);
+        }
+    }
 }
 
 /**

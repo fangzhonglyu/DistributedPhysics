@@ -8,6 +8,7 @@
 #ifndef __RD_NETWORK_DATA_H__
 #define __RD_NETWORK_DATA_H__
 #include <cugl/cugl.h>
+#include <stack>
 
 using namespace cugl;
 
@@ -62,6 +63,7 @@ struct compareTimestamp{
 class NetCache {
     
 protected:
+    std::stack<netdata> _netCacheHistory;
     /** Data cache for outbound messages to be broadcasted to the network. */
     std::priority_queue<netdata,std::vector<netdata>,compareTimestamp> _netCache;
     
@@ -77,6 +79,7 @@ public:
     netdata pop(){
         netdata temp = _netCache.top();
         _netCache.pop();
+        _netCacheHistory.push(temp);
         return temp;
     }
     
@@ -90,6 +93,10 @@ public:
     }
     
     void skipToTime(Uint64 timestamp){
+        while(timestamp < _netCacheHistory.top().timestamp){
+            _netCache.push(_netCacheHistory.top());
+            _netCacheHistory.pop();
+        }
         while(_netCache.top().timestamp < timestamp){
             _netCache.pop();
         }
