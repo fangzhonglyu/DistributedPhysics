@@ -360,6 +360,11 @@ void GameScene::populate() {
     
     // have to completely reset the world
     Timestamp start;
+    
+    _nextObj = 0;
+    _objQueue.empty();
+    _objMap.clear();
+    
     _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
     _world->activateCollisionCallbacks(true);
     _world->onBeginContact = [this](b2Contact* contact) {
@@ -476,6 +481,8 @@ void GameScene::populate() {
     CULog("World reset in %fms",end.ellapsedMicros(start)/1000.f);
 }
 
+
+
 /**
  * Adds the physics object to the physics world and loosely couples it to the scene graph
  *
@@ -490,6 +497,11 @@ void GameScene::populate() {
 void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
                             const std::shared_ptr<scene2::SceneNode>& node) {
     _world->addObstacle(obj);
+    
+    _objQueue.push(_nextObj);
+    _objMap.insert(std::make_pair(_nextObj,obj));
+    _nextObj++;
+    
     obj->setDebugScene(_debugnode);
     
     // Position the scene graph node (enough for static objects)
@@ -523,6 +535,26 @@ netdata GameScene::packFire(Uint64 timestamp){
     data.data = _serializer.serialize();
     //float delayMs = (timestamp-_counter)*FIXED_TIMESTEP_S*1000;
     //CULog("Fire input at angle %f, power %f, cached for %llu, added delay of %.2fms",angle,firepower,timestamp,delayMs);
+    return data;
+}
+
+netdata GameScene::packState(Uint64 timestamp){
+    Uint32 id = _objQueue.front();
+    _objQueue.pop();
+    auto obj = _objMap.at(id);
+    netdata data;
+    data.timestamp = timestamp;
+    data.flag = STATE_SYNC_FLAG;
+    _serializer.reset();
+    _serializer.writeUint32(id);
+    _serializer.writeFloat(obj->getX());
+    _serializer.writeFloat(obj->getY());
+    _serializer.writeFloat(obj->getVX());
+    _serializer.writeFloat(obj->getVY());
+    _serializer.writeFloat(obj->getAngle());
+    _serializer.writeFloat(obj->getAngularVelocity());
+    data.data = _serializer.serialize();
+    _objQueue.push(id);
     return data;
 }
 
@@ -573,6 +605,35 @@ void GameScene::processFire(netdata data){
     }
 }
 
+void GameScene::processState(netdata data){
+    if(data.sourceID == ""){
+        CULog("Ignoring state sync from self.");
+        return;
+    }
+    CUAssert(data.flag == STATE_SYNC_FLAG);
+    if(data.timestamp < _counter){
+        if(LOG_MSGS){
+            _writer->writeLine("Outdated state, extrapolating");
+        }
+        CULog("Outdated state, extrapolating");
+    }
+    _deserializer.reset();
+    _deserializer.receive(data.data);
+    Uint32 id = _deserializer.readUint32();
+    float x = _deserializer.readFloat();
+    float y = _deserializer.readFloat();
+    float vx = _deserializer.readFloat();
+    float vy = _deserializer.readFloat();
+    float angle = _deserializer.readFloat();
+    float angV = _deserializer.readFloat();
+    CULog("state sync for obj %u, %f,%f,|%f,%f|%f,%f",id,x,y,vx,vy,angle,angV);
+    auto obj = _objMap.at(id);
+    obj->setPosition(x, y);
+    obj->setLinearVelocity(vx, vy);
+    obj->setAngle(angle);
+    obj->setAngularVelocity(angV);
+}
+
 void GameScene::processCache(){
     
     if(_netCache.isEmpty()){
@@ -590,6 +651,9 @@ void GameScene::processCache(){
                 break;
             case RESET_FLAG:
                 reset();
+                break;
+            case STATE_SYNC_FLAG:
+                processState(next);
                 break;
             default:
                 CULogError("unknown flag %u", next.flag);
@@ -676,9 +740,13 @@ void GameScene::preUpdate(float dt) {
         transmitNetdata(packFire(_counter+20));
     }
     
+    if (!_objQueue.empty() && _isHost){
+        transmitNetdata(packState(_counter));
+    }
+    
+    float turnRate = _isHost ? DEFAULT_TURN_RATE : -DEFAULT_TURN_RATE;
     auto cannon = _isHost ? _cannon1 : _cannon2;
-    cannon->setAngle(_input.getVertical() * DEFAULT_TURN_RATE + cannon->getAngle());
-
+    cannon->setAngle(_input.getVertical() * turnRate + cannon->getAngle());
 }
 
 void GameScene::postUpdate(float dt) {

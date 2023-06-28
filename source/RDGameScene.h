@@ -95,6 +95,12 @@ protected:
     
     std::mt19937 _rand;
     
+    std::queue<Uint32> _objQueue;
+    
+    std::map<Uint32,std::shared_ptr<physics2::Obstacle>> _objMap;
+    
+    Uint32 _nextObj;
+    
 #pragma mark Internal Object Management
     
     std::shared_ptr<cugl::physics2::BoxObstacle> addCrateAt(cugl::Vec2 pos);
@@ -316,9 +322,13 @@ public:
      */
     netdata packFire(Uint64 timestamp);
     
+    netdata packState(Uint64 timestamp);
+    
     netdata packReset(Uint64 timestamp);
     
     void processFire(netdata data);
+    
+    void processState(netdata data);
     
     void processCache();
     
