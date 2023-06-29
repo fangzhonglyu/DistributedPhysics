@@ -34,6 +34,7 @@
 #include "RDInput.h"
 #include "NetworkData.h"
 #include "RDNetwork.h"
+#include "Interpolator.h"
 /**
  * This class is the primary gameplay constroller for the demo.
  *
@@ -97,9 +98,11 @@ protected:
     
     std::queue<Uint32> _objQueue;
     
-    std::map<Uint32,std::shared_ptr<physics2::Obstacle>> _objMap;
+    std::unordered_map<Uint32,std::shared_ptr<physics2::Obstacle>> _objMap;
     
     Uint32 _nextObj;
+    
+    Interpolator _itpr;
     
 #pragma mark Internal Object Management
     

@@ -15,7 +15,7 @@
 #include <cugl/cugl.h>
 #include <vector>
 
-#define PING_TEST_COUNT 100
+#define PING_TEST_COUNT 5
 
 /**
  * This class provides the interface to make a new game.

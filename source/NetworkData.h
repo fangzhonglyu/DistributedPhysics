@@ -12,10 +12,10 @@
 
 using namespace cugl;
 
-#define FIRE_INPUT_FLAG 101
+#define FIRE_INPUT_FLAG 103
 #define STATE_SYNC_FLAG 102
-#define RESET_FLAG 103
-#define ROCKET_FLAG 104
+#define RESET_FLAG 104
+#define ROCKET_FLAG 101
 
 typedef struct {
     /** Discrete timestamp for the time of this message for network synchronization. */
@@ -54,7 +54,7 @@ typedef struct {
 struct compareTimestamp{
     bool operator()(netdata const& data1, netdata const&data2){
         if(data1.flag != data2.flag){
-            return data1.flag > data2.flag;
+            return data1.flag < data2.flag;
         }
         return data1.timestamp > data2.timestamp;
     }

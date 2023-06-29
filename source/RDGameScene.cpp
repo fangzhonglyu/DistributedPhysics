@@ -362,8 +362,9 @@ void GameScene::populate() {
     Timestamp start;
     
     _nextObj = 0;
-    _objQueue.empty();
+    _objQueue = std::queue<Uint32>();
     _objMap.clear();
+    _itpr.reset();
     
     _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
     _world->activateCollisionCallbacks(true);
@@ -579,7 +580,7 @@ void GameScene::processFire(netdata data){
         }
         CULogError("Simulation Corrupted, State Synchronization Needed");
     }
-    else if(data.timestamp == _counter){
+    if(data.timestamp <= _counter){
         _deserializer.reset();
         _deserializer.reset();
         _deserializer.receive(data.data);
@@ -627,11 +628,29 @@ void GameScene::processState(netdata data){
     float angle = _deserializer.readFloat();
     float angV = _deserializer.readFloat();
     CULog("state sync for obj %u, %f,%f,|%f,%f|%f,%f",id,x,y,vx,vy,angle,angV);
+    if(!_objMap.count(id)){
+        CULog("unknown object");
+        return;
+    }
     auto obj = _objMap.at(id);
-    obj->setPosition(x, y);
-    obj->setLinearVelocity(vx, vy);
-    obj->setAngle(angle);
-    obj->setAngularVelocity(angV);
+    float diff = (obj->getPosition()-Vec2(x,y)).length();
+    float angDiff = 10*abs(obj->getAngle()-angle);
+    int steps = SDL_max(0,SDL_min(30,SDL_max((int)(diff*30),(int)angDiff)));
+    x+=(steps)*FIXED_TIMESTEP_S*vx;
+    y+=(steps)*FIXED_TIMESTEP_S*vy;
+    
+    std::vector<float> param = std::vector<float>();
+    param.push_back(x); param.push_back(y); param.push_back(vx); param.push_back(vy); param.push_back(angle); param.push_back(angV);
+    
+    _itpr.addObject(obj, std::make_pair(steps,param));
+//    obj->setPosition(x, y);
+//    obj->setLinearVelocity(vx, vy);
+//    obj->setAngle(angle);
+//    obj->setAngularVelocity(angV);
+//    obj->setPosition(param[0], param[1]);
+//    obj->setLinearVelocity(param[2], param[3]);
+//    obj->setAngle(param[4]);
+//    obj->setAngularVelocity(param[5]);
 }
 
 void GameScene::processCache(){
@@ -642,9 +661,9 @@ void GameScene::processCache(){
     while(!_netCache.isEmpty() && _netCache.peek().timestamp <= _counter){
         netdata next = _netCache.pop();
         if(LOG_MSGS){
-            _writer->writeLine(cugl::strtool::format("MESSAGE at %llu, received by %llu", _counter, next.receivedBy));
+            _writer->writeLine(cugl::strtool::format("MESSAGE at %llu, received by %llu", next.timestamp, next.receivedBy));
         }
-        CULog("MESSAGE at %llu, received by %llu", _counter, next.receivedBy);
+        CULog("MESSAGE at %llu, received by %llu", next.timestamp, next.receivedBy);
         switch (next.flag) {
             case FIRE_INPUT_FLAG:
                 processFire(next);
@@ -696,9 +715,6 @@ void GameScene::transmitNetdata(const netdata data){
 
 void GameScene::processData(const std::string source,
                             const std::vector<std::byte>& data) {
-    if(source == _network->getUUID()){
-        return;
-    }
 //    CULog(source.c_str());
 //    CULog("gotdata");
     _deserializer.reset();
@@ -741,7 +757,9 @@ void GameScene::preUpdate(float dt) {
     }
     
     if (!_objQueue.empty() && _isHost){
-        transmitNetdata(packState(_counter));
+        for(int ii = 0; ii < 5; ii++){
+            transmitNetdata(packState(_counter));
+        }
     }
     
     float turnRate = _isHost ? DEFAULT_TURN_RATE : -DEFAULT_TURN_RATE;
@@ -757,6 +775,7 @@ void GameScene::fixedUpdate() {
     updateNet();
     processCache();
     _world->update(FIXED_TIMESTEP_S);
+    _itpr.fixedUpdate();
     _counter++;
 }
 
