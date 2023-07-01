@@ -84,7 +84,6 @@ public:
     }
     
     void push(netdata data, Uint64 received){
-        data.receivedBy = received;
         _netCache.push(data);
     }
     

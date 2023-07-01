@@ -636,8 +636,8 @@ void GameScene::processState(netdata data){
     float diff = (obj->getPosition()-Vec2(x,y)).length();
     float angDiff = 10*abs(obj->getAngle()-angle);
     int steps = SDL_max(0,SDL_min(30,SDL_max((int)(diff*30),(int)angDiff)));
-    x+=(steps)*FIXED_TIMESTEP_S*vx;
-    y+=(steps)*FIXED_TIMESTEP_S*vy;
+    //x+=(steps)*FIXED_TIMESTEP_S*vx;
+    //y+=(steps)*FIXED_TIMESTEP_S*vy;
     
     std::vector<float> param = std::vector<float>();
     param.push_back(x); param.push_back(y); param.push_back(vx); param.push_back(vy); param.push_back(angle); param.push_back(angV);
@@ -724,6 +724,7 @@ void GameScene::processData(const std::string source,
     msg.sourceID = source;
     msg.flag = _deserializer.readUint32();
     msg.data = { data.begin() + 14, data.end()};
+    msg.receivedBy = _counter;
     _netCache.push(msg, _counter);
 }
 
