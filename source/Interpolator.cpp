@@ -10,6 +10,7 @@
 using namespace cugl;
 
 void Interpolator::addObject(std::shared_ptr<physics2::Obstacle> obj, std::pair<int,std::vector<float>> param){
+    _cache.erase(obj);
     _cache.insert(std::make_pair(obj,param));
 }
 
