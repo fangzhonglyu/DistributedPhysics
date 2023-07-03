@@ -54,6 +54,8 @@ using namespace cugl;
 /** To automate the loading of crate files */
 #define NUM_CRATES 15
 
+#define INPUT_DELAY 2
+
 #define LOG_MSGS 0
 
 // Since these appear only once, we do not care about the magic numbers.
@@ -829,7 +831,7 @@ void GameScene::preUpdate(float dt) {
     // Process the toggled key commands
     if (_input.didDebug()) { setDebug(!isDebug()); }
     if (_input.didReset()) {
-        transmitNetdata(packReset(_counter+20));
+        transmitNetdata(packReset(_counter+INPUT_DELAY));
     }
     if (_input.didExit()) {
         CULog("Shutting down");
@@ -837,7 +839,7 @@ void GameScene::preUpdate(float dt) {
     }
     
     if (_input.didFire()) {
-        transmitNetdata(packFire(_counter+20));
+        transmitNetdata(packFire(_counter+INPUT_DELAY));
     }
     
     if (!_objQueue.empty() && _isHost){
