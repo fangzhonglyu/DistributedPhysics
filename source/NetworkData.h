@@ -12,7 +12,7 @@
 
 using namespace cugl;
 
-#define ROCKET_FLAG 101
+#define CANNON_FLAG 101
 #define STATE_SYNC_FLAG 102
 #define FIRE_INPUT_FLAG 103
 #define RESET_FLAG 104

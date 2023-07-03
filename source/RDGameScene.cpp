@@ -457,10 +457,31 @@ void GameScene::populate(bool isInit) {
         
 #pragma mark : Cannon
         image  = _assets->get<Texture>(ROCK_TEXTURE);
-        _cannon1 = scene2::PolygonNode::allocWithTexture(image);
+        
+        _cannon1Node = scene2::PolygonNode::allocWithTexture(image);
+        
+        Size canSize(image->getSize()/_scale);
+        
+        Vec2 canPos1 = ((Vec2)CAN1_POS);
+        _cannon1 = CannonModel::alloc(canPos1,canSize,DEFAULT_TURN_RATE);
+        _cannon1->setBodyType(b2BodyType::b2_kinematicBody);
+        _cannon1->setDrawScale(_scale);
+        _cannon1->setAngle(-M_PI_2);
+        _cannon1->setDebugColor(DYNAMIC_COLOR);
+        _cannon1->setSensor(true);
+        _cannon1->setCannonNode(_cannon1Node);
             
         image  = _assets->get<Texture>(ROCK_TEXTURE);
-        _cannon2 = scene2::PolygonNode::allocWithTexture(image);
+        _cannon2Node = scene2::PolygonNode::allocWithTexture(image);
+        
+        Vec2 canPos2 = ((Vec2)CAN2_POS);
+        _cannon2= CannonModel::alloc(canPos2,canSize,-DEFAULT_TURN_RATE);
+        _cannon2->setBodyType(b2BodyType::b2_kinematicBody);
+        _cannon2->setDrawScale(_scale);
+        _cannon2->setAngle(M_PI_2);
+        _cannon2->setDebugColor(DYNAMIC_COLOR);
+        _cannon2->setSensor(true);
+        _cannon2->setCannonNode(_cannon2Node);
     }
     
     if(isInit){
@@ -481,15 +502,16 @@ void GameScene::populate(bool isInit) {
     }
     
     Vec2 canPos1 = ((Vec2)CAN1_POS);
-    _cannon1->setAnchor(Vec2::ANCHOR_CENTER);
-    _cannon1->setPosition(canPos1*_scale);
+    _cannon1->setPosition(canPos1);
     _cannon1->setAngle(-M_PI_2);
-    _worldnode->addChild(_cannon1);
+    _world->addObstacle(_cannon1);
+    _worldnode->addChild(_cannon1Node);
     
     Vec2 canPos2 = ((Vec2)CAN2_POS);
-    _cannon2->setPosition(canPos2*_scale);
+    _cannon2->setPosition(canPos2);
     _cannon2->setAngle(M_PI_2);
-    _worldnode->addChild(_cannon2);
+    _world->addObstacle(_cannon2);
+    _worldnode->addChild(_cannon2Node);
 
     Timestamp end;
     CULog("World reset in %fms",end.ellapsedMicros(start)/1000.f);
@@ -553,7 +575,7 @@ netdata GameScene::packFire(Uint64 timestamp){
     data.flag = FIRE_INPUT_FLAG;
     _serializer.reset();
     _serializer.writeBool(_isHost);
-    auto cannon = _isHost ? _cannon1 : _cannon2;
+    auto cannon = _isHost ? _cannon1Node : _cannon2Node;
     float angle = cannon->getAngle();
     _serializer.writeFloat(angle);
     float firepower = _input.getFirePower();
@@ -592,6 +614,18 @@ netdata GameScene::packReset(Uint64 timestamp){
     return data;
 }
 
+netdata GameScene::packCannon(Uint64 timestamp){
+    netdata data;
+    data.timestamp = timestamp;
+    data.flag = CANNON_FLAG;
+    _serializer.reset();
+    _serializer.writeBool(_isHost);
+    auto cannon = _isHost? _cannon1: _cannon2;
+    _serializer.writeFloat(cannon->getAngle());
+    data.data = _serializer.serialize();
+    return data;
+}
+
 union {
     float f;
     uint32_t u;
@@ -610,7 +644,7 @@ void GameScene::processFire(netdata data){
         _deserializer.reset();
         _deserializer.receive(data.data);
         bool isHost = _deserializer.readBool();
-        auto cannon = isHost ? _cannon1 : _cannon2;
+        auto cannon = isHost ? _cannon1Node : _cannon2Node;
         float angle = _deserializer.readFloat() + M_PI_2;
         float firePower = _deserializer.readFloat();
         Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
@@ -678,6 +712,25 @@ void GameScene::processState(netdata data){
 //    obj->setAngularVelocity(param[5]);
 }
 
+void GameScene::processCannon(netdata data){
+    if(data.sourceID == ""){
+        //CULog("Ignoring state sync from self.");
+        return;
+    }
+    CUAssert(data.flag == CANNON_FLAG);
+    _deserializer.reset();
+    _deserializer.receive(data.data);
+    auto cannon = _deserializer.readBool() ? _cannon1:_cannon2;
+    float angle = _deserializer.readFloat();
+    float angDiff = 10*abs(cannon->getAngle()-angle);
+    int steps = SDL_max(0,SDL_min(30,(int)angDiff));
+    
+    std::vector<float> param = std::vector<float>();
+    param.push_back(cannon->getX()); param.push_back(cannon->getY()); param.push_back(cannon->getVX()); param.push_back(cannon->getVY()); param.push_back(angle); param.push_back(0);
+    
+    _itpr.addObject(cannon, std::make_pair(steps,param));
+}
+
 void GameScene::processCache(){
     
     if(_netCache.isEmpty()){
@@ -700,6 +753,9 @@ void GameScene::processCache(){
                 break;
             case STATE_SYNC_FLAG:
                 processState(next);
+                break;
+            case CANNON_FLAG:
+                processCannon(next);
                 break;
             default:
                 CULogError("unknown flag %u", next.flag);
@@ -792,7 +848,10 @@ void GameScene::preUpdate(float dt) {
     
     float turnRate = _isHost ? DEFAULT_TURN_RATE : -DEFAULT_TURN_RATE;
     auto cannon = _isHost ? _cannon1 : _cannon2;
+    //cannon->setAngularVelocity(_input.getVertical() * turnRate);
     cannon->setAngle(_input.getVertical() * turnRate + cannon->getAngle());
+    
+    transmitNetdata(packCannon(_counter));
 }
 
 void GameScene::postUpdate(float dt) {

@@ -70,9 +70,11 @@ protected:
     /** Reference to the goalDoor (for collision detection) */
     std::shared_ptr<cugl::physics2::BoxObstacle> _goalDoor;
     /** Reference to the player1 cannon */
-    std::shared_ptr<cugl::scene2::SceneNode> _cannon1;
+    std::shared_ptr<cugl::scene2::SceneNode> _cannon1Node;
+    std::shared_ptr<CannonModel> _cannon1;
     /** Reference to the player2 cannon */
-    std::shared_ptr<cugl::scene2::SceneNode> _cannon2;
+    std::shared_ptr<cugl::scene2::SceneNode> _cannon2Node;
+    std::shared_ptr<CannonModel> _cannon2;
     
     /** Host is by default the left cannon */
     bool _isHost;
@@ -332,6 +334,10 @@ public:
     netdata packState(Uint64 timestamp);
     
     netdata packReset(Uint64 timestamp);
+    
+    netdata packCannon(Uint64 timestamp);
+    
+    void processCannon(netdata data);
     
     void processFire(netdata data);
     
