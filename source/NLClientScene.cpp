@@ -230,8 +230,10 @@ void ClientScene::processData(const std::string source,
                               const std::vector<std::byte>& data) {
     if (data.size() == 1 && data.at(0) == std::byte(255)) {
         _status = Status::START;
+        CULog("received start signal");
     }
     else if (data.size() == 32 && data.at(0) == std::byte(111)){
+        CULog("received ping packet");
         if(source != ""){
             _network->broadcast(data);
         }

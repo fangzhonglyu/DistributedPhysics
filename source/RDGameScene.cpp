@@ -52,7 +52,7 @@ using namespace cugl;
 #define DEFAULT_TURN_RATE 0.05f
 
 /** To automate the loading of crate files */
-#define NUM_CRATES 2
+#define NUM_CRATES 15
 
 #define LOG_MSGS 0
 
@@ -252,7 +252,7 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
     _world->update(FIXED_TIMESTEP_S);
     
-    populate();
+    populate(true);
     _active = true;
     _complete = false;
     setDebug(false);
@@ -299,6 +299,14 @@ void GameScene::setHost(bool isHost){
 #pragma mark -
 #pragma mark Level Layout
 
+std::shared_ptr<physics2::PolygonObstacle> wallobj1;
+std::shared_ptr<physics2::PolygonObstacle> wallobj2;
+std::shared_ptr<scene2::PolygonNode> wallsprite1;
+std::shared_ptr<scene2::PolygonNode> wallsprite2;
+
+std::vector<std::shared_ptr<physics2::BoxObstacle>> boxes;
+std::vector<std::shared_ptr<scene2::PolygonNode>> nodes;
+
 /**
  * Resets the status of the game so that we can play again.
  *
@@ -314,11 +322,11 @@ void GameScene::reset() {
     _worldnode->removeAllChildren();
     _debugnode->removeAllChildren();
     setComplete(false);
-    populate();
+    populate(false);
     Application::get()->resetLeftOver();
 }
 
-std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
+std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos, bool original) {
     // Pick a crate and random and generate the key
     int indx = (_rand() % 2 == 0 ? 2 : 1);
     std::stringstream ss;
@@ -331,19 +339,26 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
     auto crate = physics2::BoxObstacle::alloc(pos,boxSize);
     crate->setDebugColor(DYNAMIC_COLOR);
     crate->setName(ss.str());
-    crate->setAngleSnap(0);             // Snap to the nearest degree
+    crate->setAngleSnap(0); // Snap to the nearest degree
 
     // Set the physics attributes
     crate->setDensity(CRATE_DENSITY);
     crate->setFriction(CRATE_FRICTION);
     crate->setAngularDamping(CRATE_DAMPING);
     crate->setRestitution(BASIC_RESTITUTION);
-
+    
     auto sprite = scene2::PolygonNode::allocWithTexture(image);
     sprite->setAnchor(Vec2::ANCHOR_CENTER);
+    
+    if(original){
+        boxes.push_back(crate);
+        nodes.push_back(sprite);
+    }
+    
     addObstacle(crate,sprite);   // PUT SAME TEXTURES IN SAME LAYER!!!
     return crate;
 }
+
 
 /**
  * Lays out the game geography.
@@ -356,7 +371,7 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos) {
  * This method is really, really long.  In practice, you would replace this
  * with your serialization loader, which would process a level file.
  */
-void GameScene::populate() {
+void GameScene::populate(bool isInit) {
     
     // have to completely reset the world
     Timestamp start;
@@ -375,109 +390,107 @@ void GameScene::populate() {
         beforeSolve(contact,oldManifold);
     };
     
+    Timestamp world;
+    CULog("World reinit in %fms",world.ellapsedMicros(start)/1000.f);
     
-    std::shared_ptr<Texture> image;
-    std::shared_ptr<scene2::PolygonNode> sprite;
-    
+    if(isInit){
+        std::shared_ptr<Texture> image;
+        //std::shared_ptr<scene2::PolygonNode> sprite;
+        
 #pragma mark : Wall polygon 1
-    // Create ground pieces
-    // All walls share the same texture
-    image  = _assets->get<Texture>(EARTH_TEXTURE);
-    std::string wname = "wall";
+        
+        // Create ground pieces
+        // All walls share the same texture
+        image  = _assets->get<Texture>(EARTH_TEXTURE);
+        std::string wname = "wall";
 
-    // Create the polygon outline
-    Poly2 wall1(reinterpret_cast<Vec2*>(WALL1),11);
-    EarclipTriangulator triangulator;
-    triangulator.set(wall1.vertices);
-    triangulator.calculate();
-    wall1.setIndices(triangulator.getTriangulation());
-    triangulator.clear();
+        // Create the polygon outline
+        Poly2 wall1(reinterpret_cast<Vec2*>(WALL1),11);
+        EarclipTriangulator triangulator;
+        triangulator.set(wall1.vertices);
+        triangulator.calculate();
+        wall1.setIndices(triangulator.getTriangulation());
+        triangulator.clear();
 
-    std::shared_ptr<physics2::PolygonObstacle> wallobj;
-    wallobj = physics2::PolygonObstacle::allocWithAnchor(wall1,Vec2::ANCHOR_CENTER);
-    wallobj->setDebugColor(STATIC_COLOR);
-    wallobj->setName(wname);
+        //std::shared_ptr<physics2::PolygonObstacle> wallobj;
+        wallobj1 = physics2::PolygonObstacle::allocWithAnchor(wall1,Vec2::ANCHOR_CENTER);
+        wallobj1->setDebugColor(STATIC_COLOR);
+        wallobj1->setName(wname);
 
-    // Set the physics attributes
-    wallobj->setBodyType(b2_staticBody);
-    wallobj->setDensity(BASIC_DENSITY);
-    wallobj->setFriction(BASIC_FRICTION);
-    wallobj->setRestitution(BASIC_RESTITUTION);
+        // Set the physics attributes
+        wallobj1->setBodyType(b2_staticBody);
+        wallobj1->setDensity(BASIC_DENSITY);
+        wallobj1->setFriction(BASIC_FRICTION);
+        wallobj1->setRestitution(BASIC_RESTITUTION);
 
-    // Add the scene graph nodes to this object
-    wall1 *= _scale;
-    sprite = scene2::PolygonNode::allocWithTexture(image,wall1);
-    addObstacle(wallobj,sprite);  // All walls share the same texture
-    
+        // Add the scene graph nodes to this object
+        wall1 *= _scale;
+        wallsprite1 = scene2::PolygonNode::allocWithTexture(image,wall1);
+        
 #pragma mark : Wall polygon 2
-    Poly2 wall2(reinterpret_cast<Vec2*>(WALL2),9);
-    triangulator.set(wall2.vertices);
-    triangulator.calculate();
-    wall2.setIndices(triangulator.getTriangulation());
-    triangulator.clear();
+        Poly2 wall2(reinterpret_cast<Vec2*>(WALL2),9);
+        triangulator.set(wall2.vertices);
+        triangulator.calculate();
+        wall2.setIndices(triangulator.getTriangulation());
+        triangulator.clear();
 
-    wallobj = physics2::PolygonObstacle::allocWithAnchor(wall2,Vec2::ANCHOR_CENTER);
-    wallobj->setDebugColor(STATIC_COLOR);
-    wallobj->setName(wname);
-    
-    // Set the physics attributes
-    wallobj->setBodyType(b2_staticBody);
-    wallobj->setDensity(BASIC_DENSITY);
-    wallobj->setFriction(BASIC_FRICTION);
-    wallobj->setRestitution(BASIC_RESTITUTION);
+        wallobj2 = physics2::PolygonObstacle::allocWithAnchor(wall2,Vec2::ANCHOR_CENTER);
+        wallobj2->setDebugColor(STATIC_COLOR);
+        wallobj2->setName(wname);
 
-    // Add the scene graph nodes to this object
-    wall2 *= _scale;
-    sprite = scene2::PolygonNode::allocWithTexture(image,wall2);
-    addObstacle(wallobj,sprite);  // All walls share the same texture
+        // Set the physics attributes
+        wallobj2->setBodyType(b2_staticBody);
+        wallobj2->setDensity(BASIC_DENSITY);
+        wallobj2->setFriction(BASIC_FRICTION);
+        wallobj2->setRestitution(BASIC_RESTITUTION);
 
+        // Add the scene graph nodes to this object
+        wall2 *= _scale;
+        wallsprite2 = scene2::PolygonNode::allocWithTexture(image,wall2);
+        
 #pragma mark : Crates
-    for (int ii = 0; ii < 15; ii++) {
-        // Pick a crate and random and generate the key
-        Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
-        addCrateAt(boxPos);
+        for (int ii = 0; ii < NUM_CRATES; ii++) {
+            // Pick a crate and random and generate the key
+            Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
+            addCrateAt(boxPos,true);
+        }
+        
+#pragma mark : Cannon
+        image  = _assets->get<Texture>(ROCK_TEXTURE);
+        _cannon1 = scene2::PolygonNode::allocWithTexture(image);
+            
+        image  = _assets->get<Texture>(ROCK_TEXTURE);
+        _cannon2 = scene2::PolygonNode::allocWithTexture(image);
     }
-
-#pragma mark : Cannon1
+    
+    if(isInit){
+        addObstacle(wallobj1,wallsprite1);  // All walls share the same texture
+        addObstacle(wallobj2,wallsprite2);  // All walls share the same texture
+    }
+    else{
+        addObstacleAlt(wallobj1,wallsprite1);  // All walls share the same texture
+        addObstacleAlt(wallobj2,wallsprite2);  // All walls share the same texture
+        for(int ii = 0; ii < NUM_CRATES; ii++){
+            Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
+            boxes[ii]->setPosition(boxPos);
+            boxes[ii]->setLinearVelocity(Vec2::ZERO);
+            boxes[ii]->setAngle(0);
+            boxes[ii]->setAngularVelocity(0);
+            addObstacleAlt(boxes[ii], nodes[ii]);
+        }
+    }
+    
     Vec2 canPos1 = ((Vec2)CAN1_POS);
-    image  = _assets->get<Texture>(ROCK_TEXTURE);
-    
-//    _cannon1 = CannonModel::alloc(canPos1,canSize,DEFAULT_TURN_RATE);
-//    _cannon1->setBodyType(b2BodyType::b2_staticBody);
-//    _cannon1->setDrawScale(_scale);
-//    _cannon1->setAngle(-M_PI_2);
-//    _cannon1->setDebugColor(DYNAMIC_COLOR);
-    
-    _cannon1 = scene2::PolygonNode::allocWithTexture(image);
     _cannon1->setAnchor(Vec2::ANCHOR_CENTER);
     _cannon1->setPosition(canPos1*_scale);
     _cannon1->setAngle(-M_PI_2);
-	//_cannon1->setCannonNode(cannon1Node);
-
-    // Create the polygon node (empty, as the model will initialize)
     _worldnode->addChild(_cannon1);
-    //_cannon1->setDebugScene(_debugnode);
-    //_world->addObstacle(_cannon1);
     
-#pragma mark : Cannon2
     Vec2 canPos2 = ((Vec2)CAN2_POS);
-    image  = _assets->get<Texture>(ROCK_TEXTURE);
-    
-    _cannon2 = scene2::PolygonNode::allocWithTexture(image);
-    //_cannon2->setBodyType(b2BodyType::b2_staticBody);
-    //_cannon2->setDrawScale(_scale);
     _cannon2->setPosition(canPos2*_scale);
     _cannon2->setAngle(M_PI_2);
-    //_cannon2->setDebugColor(DYNAMIC_COLOR);
-    //_cannon2->setSensor(true);
-    
-    //auto cannon2Node = scene2::PolygonNode::allocWithTexture(image);
-    //cannon2Node->setAnchor(Vec2::ANCHOR_CENTER);
-    //_cannon2->setCannonNode(cannon2Node);
-    // Create the polygon node (empty, as the model will initialize)
     _worldnode->addChild(_cannon2);
-    //_cannon2->setDebugScene(_debugnode);
-    //_world->addObstacle(_cannon2);
+
     Timestamp end;
     CULog("World reset in %fms",end.ellapsedMicros(start)/1000.f);
 }
@@ -503,7 +516,7 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
     _objMap.insert(std::make_pair(_nextObj,obj));
     _nextObj++;
     
-    obj->setDebugScene(_debugnode);
+    //obj->setDebugScene(_debugnode);
     
     // Position the scene graph node (enough for static objects)
     node->setPosition(obj->getPosition()*_scale);
@@ -520,6 +533,18 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
             weak->setAngle(angle);
         });
     }
+}
+
+void GameScene::addObstacleAlt(const std::shared_ptr<cugl::physics2::Obstacle>& obj,
+                    const std::shared_ptr<cugl::scene2::SceneNode>& node){
+    _world->addObstacle(obj);
+    
+    _objQueue.push(_nextObj);
+    _objMap.insert(std::make_pair(_nextObj,obj));
+    _nextObj++;
+    
+    node->setPosition(obj->getPosition()*_scale);
+    _worldnode->addChild(node);
 }
 
 netdata GameScene::packFire(Uint64 timestamp){
@@ -590,7 +615,7 @@ void GameScene::processFire(netdata data){
         float firePower = _deserializer.readFloat();
         Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
         Vec2 pos = cannon->getPosition()/_scale+1.5f*forward;
-        auto crate = addCrateAt(pos);
+        auto crate = addCrateAt(pos,false);
         //crate->setBodyType(b2_kinematicBody);
         crate->setLinearVelocity(forward*50*firePower);
     
@@ -608,7 +633,7 @@ void GameScene::processFire(netdata data){
 
 void GameScene::processState(netdata data){
     if(data.sourceID == ""){
-        CULog("Ignoring state sync from self.");
+        //CULog("Ignoring state sync from self.");
         return;
     }
     CUAssert(data.flag == STATE_SYNC_FLAG);
@@ -616,7 +641,7 @@ void GameScene::processState(netdata data){
         if(LOG_MSGS){
             _writer->writeLine("Outdated state, extrapolating");
         }
-        CULog("Outdated state, extrapolating");
+        //CULog("Outdated state, extrapolating");
     }
     _deserializer.reset();
     _deserializer.receive(data.data);
@@ -627,9 +652,9 @@ void GameScene::processState(netdata data){
     float vy = _deserializer.readFloat();
     float angle = _deserializer.readFloat();
     float angV = _deserializer.readFloat();
-    CULog("state sync for obj %u, %f,%f,|%f,%f|%f,%f",id,x,y,vx,vy,angle,angV);
+    //CULog("state sync for obj %u, %f,%f,|%f,%f|%f,%f",id,x,y,vx,vy,angle,angV);
     if(!_objMap.count(id)){
-        CULog("unknown object");
+        CULogError("unknown object");
         return;
     }
     auto obj = _objMap.at(id);
@@ -663,7 +688,9 @@ void GameScene::processCache(){
         if(LOG_MSGS){
             _writer->writeLine(cugl::strtool::format("MESSAGE at %llu, received by %llu", next.timestamp, next.receivedBy));
         }
-        CULog("MESSAGE at %llu, received by %llu", next.timestamp, next.receivedBy);
+        if(next.flag != STATE_SYNC_FLAG){
+            CULog("MESSAGE at %llu, received by %llu", next.timestamp, next.receivedBy);
+        }
         switch (next.flag) {
             case FIRE_INPUT_FLAG:
                 processFire(next);

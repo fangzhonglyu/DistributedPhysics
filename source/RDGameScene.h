@@ -106,7 +106,7 @@ protected:
     
 #pragma mark Internal Object Management
     
-    std::shared_ptr<cugl::physics2::BoxObstacle> addCrateAt(cugl::Vec2 pos);
+    std::shared_ptr<cugl::physics2::BoxObstacle> addCrateAt(cugl::Vec2 pos, bool original);
     
     /**
      * Lays out the game geography.
@@ -119,7 +119,7 @@ protected:
      * This method is really, really long.  In practice, you would replace this
      * with your serialization loader, which would process a level file.
      */
-    void populate();
+    void populate(bool isInit);
     
     /**
      * Adds the physics object to the physics world and loosely couples it to the scene graph
@@ -128,11 +128,15 @@ protected:
      * screen.  One way is to make a subclass of a physics object, like we did
      * with rocket.  The other is to use callback functions to loosely couple
      * the two.  This function is an example of the latter.
+     * the two.  This function is an example of the latter.
      *
      * param obj    The physics object to add
      * param node   The scene graph node to attach it to
      */
     void addObstacle(const std::shared_ptr<cugl::physics2::Obstacle>& obj, 
+                     const std::shared_ptr<cugl::scene2::SceneNode>& node);
+    
+    void addObstacleAlt(const std::shared_ptr<cugl::physics2::Obstacle>& obj,
                      const std::shared_ptr<cugl::scene2::SceneNode>& node);
 
     /**
