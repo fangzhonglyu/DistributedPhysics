@@ -7,43 +7,65 @@
 
 #include "Interpolator.h"
 
+#define ITPR_STATS 0
+
 using namespace cugl;
 
-void Interpolator::addObject(std::shared_ptr<physics2::Obstacle> obj, std::pair<int,std::vector<float>> param){
+void Interpolator::addObject(std::shared_ptr<physics2::Obstacle> obj, std::shared_ptr<targetParam> param){
+    if(_cache.count(obj))
+        return;
     _cache.erase(obj);
     _cache.insert(std::make_pair(obj,param));
+    _stepSum += param->numSteps;
+    _itprCount ++;
+//    Vec2 P0 = obj->getPosition();
+//    Vec2 P1 = obj->getPosition()+obj->getLinearVelocity();
+//    Vec3 P2 = Vec2(param->ste[0],param->second[1])-Vec2(param->second[2],param->second[3]);
+//    Vec3 P3 = Vec2(param->second[0],param->second[1]);
 }
 
 void Interpolator::fixedUpdate(){
     for(auto it = _cache.begin(); it != _cache.end(); it++){
-        int stepsLeft = it->second.first;
         auto obj = it->first;
-        std::vector<float> param = it->second.second;
-        std::vector<float> newParam;
+        std::shared_ptr<targetParam> param = it->second;
+        int stepsLeft = param->numSteps-param->curStep;
+        
         if(stepsLeft <= 1){
-            newParam = param;
+            obj->setPosition(param->P3);
+            obj->setLinearVelocity(param->targetVel);
             _deleteCache.push_back(it->first);
+            _ovrdCount++;
+            //obj->setSensor(false);
         }
         else{
-            newParam = std::vector<float>();
-            newParam.push_back(interpolate(stepsLeft, param[0], obj->getX()));
-            newParam.push_back(interpolate(stepsLeft, param[1], obj->getY()));
-            newParam.push_back(interpolate(stepsLeft, param[2], obj->getVX()));
-            newParam.push_back(interpolate(stepsLeft, param[3], obj->getVY()));
-            newParam.push_back(interpolate(stepsLeft, param[4], obj->getAngle()));
-            newParam.push_back(interpolate(stepsLeft, param[5], obj->getAngularVelocity()));
+            float t = ((float)param->curStep)/param->numSteps;
+            CULog("%f",t);
+            CUAssert(t<=1.f && t>=0.f);
+            obj->setAngle(interpolate(stepsLeft, param->targetAngle, obj->getAngle()));
+            obj->setAngularVelocity(interpolate(stepsLeft, param->targetAngV, obj->getAngularVelocity()));
+            obj->setVX(interpolate(stepsLeft, param->targetVel.x, obj->getVX()));
+            obj->setVY(interpolate(stepsLeft, param->targetVel.y, obj->getVY()));
+            Vec2 pos = (1-t)*param->P0+t*param->P3;
+            //Vec2 pos = (1-t)*(1-t)*(1-t)*param->P0 + 3*(1-t)*(1-t)*t*param->P1 + 3*(1-t)*t*t*param->P2 + t*t*t*param->P3;
+            //float x = interpolate(stepsLeft,param->P3.x,obj->getX());
+            //CULog("itrp x: %d %f %f %f", stepsLeft, param->P3.x, obj->getX(), x);
+            //obj->setX(interpolate(stepsLeft,param->P3.x,obj->getX()));
+            //obj->setY(interpolate(stepsLeft,param->P3.y,obj->getY()));
+            obj->setPosition(pos);
         }
-        obj->setPosition(newParam[0],newParam[1]);
-        obj->setLinearVelocity(newParam[2],newParam[3]);
-        obj->setAngle(newParam[4]);
-        obj->setAngularVelocity(newParam[5]);
-        it->second.first--;
+        param->curStep++;
+        
     }
-    
+
     for(auto it = _deleteCache.begin(); it != _deleteCache.end(); it++){
         _cache.erase(*it);
     }
     _deleteCache.clear();
+
+    if(ITPR_STATS){
+        CULog("%ld/%ld overriden", _itprCount-_ovrdCount,_itprCount);
+        CULog("Average step: %f", ((float)_stepSum)/_itprCount);
+    }
 }
 
 float Interpolator::interpolate(int stepsLeft, float target, float source){

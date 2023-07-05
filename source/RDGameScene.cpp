@@ -696,14 +696,24 @@ void GameScene::processState(netdata data){
     auto obj = _objMap.at(id);
     float diff = (obj->getPosition()-Vec2(x,y)).length();
     float angDiff = 10*abs(obj->getAngle()-angle);
-    int steps = SDL_max(0,SDL_min(30,SDL_max((int)(diff*30),(int)angDiff)));
+    int steps = SDL_max(0,SDL_min(15,SDL_max((int)(diff*5),(int)angDiff)));
     //x+=(steps)*FIXED_TIMESTEP_S*vx;
     //y+=(steps)*FIXED_TIMESTEP_S*vy;
     
-    std::vector<float> param = std::vector<float>();
-    param.push_back(x); param.push_back(y); param.push_back(vx); param.push_back(vy); param.push_back(angle); param.push_back(angV);
-    
-    _itpr.addObject(obj, std::make_pair(steps,param));
+    targetParam param;
+    param.targetVel = Vec2(vx,vy);
+    param.targetAngle = angle;
+    param.targetAngV = angV;
+    param.curStep = 0;
+    param.numSteps = steps;
+    param.P0 = obj->getPosition();
+    //param.P1 = param.P0;
+    param.P1 = obj->getPosition()+obj->getLinearVelocity()/10.f;
+    param.P3 = Vec2(x,y);
+    //param.P2 = param.P3;
+    param.P2 = param.P3-param.targetVel/10.f;
+    std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
+    _itpr.addObject(obj, paramP);
 //    obj->setPosition(x, y);
 //    obj->setLinearVelocity(vx, vy);
 //    obj->setAngle(angle);
@@ -727,10 +737,24 @@ void GameScene::processCannon(netdata data){
     float angDiff = 10*abs(cannon->getAngle()-angle);
     int steps = SDL_max(0,SDL_min(30,(int)angDiff));
     
-    std::vector<float> param = std::vector<float>();
-    param.push_back(cannon->getX()); param.push_back(cannon->getY()); param.push_back(cannon->getVX()); param.push_back(cannon->getVY()); param.push_back(angle); param.push_back(0);
+    targetParam param;
+    param.targetVel = Vec2(0,0);
+    param.targetAngle = angle;
+    param.targetAngV = 0;
+    param.curStep = 0;
+    param.numSteps = steps;
+    param.P0 = cannon->getPosition();
+    param.P1 = param.P0;
+    param.P3 = param.P0;
+    param.P2 = param.P0;
     
-    _itpr.addObject(cannon, std::make_pair(steps,param));
+    std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
+    
+    _itpr.addObject(cannon, paramP);
+//    std::vector<float> param = std::vector<float>();
+//    param.push_back(cannon->getX()); param.push_back(cannon->getY()); param.push_back(cannon->getVX()); param.push_back(cannon->getVY()); param.push_back(angle); param.push_back(0);
+//
+//    _itpr.addObject(cannon, param);
 }
 
 void GameScene::processCache(){
@@ -743,7 +767,7 @@ void GameScene::processCache(){
         if(LOG_MSGS){
             _writer->writeLine(cugl::strtool::format("MESSAGE at %llu, received by %llu", next.timestamp, next.receivedBy));
         }
-        if(next.flag != STATE_SYNC_FLAG){
+        if(next.flag != STATE_SYNC_FLAG && next.flag != CANNON_FLAG){
             CULog("MESSAGE at %llu, received by %llu", next.timestamp, next.receivedBy);
         }
         switch (next.flag) {
@@ -843,7 +867,7 @@ void GameScene::preUpdate(float dt) {
     }
     
     if (!_objQueue.empty() && _isHost){
-        for(int ii = 0; ii < 5; ii++){
+        for(int ii = 0; ii < 1; ii++){
             transmitNetdata(packState(_counter));
         }
     }
