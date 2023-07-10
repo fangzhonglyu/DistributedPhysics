@@ -688,7 +688,6 @@ void GameScene::processState(netdata data){
     float vy = _deserializer.readFloat();
     float angle = _deserializer.readFloat();
     float angV = _deserializer.readFloat();
-    //CULog("state sync for obj %u, %f,%f,|%f,%f|%f,%f",id,x,y,vx,vy,angle,angV);
     if(!_objMap.count(id)){
         CULogError("unknown object");
         return;
@@ -696,7 +695,7 @@ void GameScene::processState(netdata data){
     auto obj = _objMap.at(id);
     float diff = (obj->getPosition()-Vec2(x,y)).length();
     float angDiff = 10*abs(obj->getAngle()-angle);
-    int steps = SDL_max(0,SDL_min(15,SDL_max((int)(diff*5),(int)angDiff)));
+    int steps = SDL_max(0,SDL_min(30,SDL_max((int)(diff*30),(int)angDiff)));
     //x+=(steps)*FIXED_TIMESTEP_S*vx;
     //y+=(steps)*FIXED_TIMESTEP_S*vy;
     
@@ -708,10 +707,10 @@ void GameScene::processState(netdata data){
     param.numSteps = steps;
     param.P0 = obj->getPosition();
     //param.P1 = param.P0;
-    param.P1 = obj->getPosition()+obj->getLinearVelocity()/10.f;
+    param.P1 = obj->getPosition()+obj->getLinearVelocity()/1.f;
     param.P3 = Vec2(x,y);
     //param.P2 = param.P3;
-    param.P2 = param.P3-param.targetVel/10.f;
+    param.P2 = param.P3-param.targetVel/1.f;
     std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
     _itpr.addObject(obj, paramP);
 //    obj->setPosition(x, y);
@@ -729,12 +728,13 @@ void GameScene::processCannon(netdata data){
         //CULog("Ignoring state sync from self.");
         return;
     }
+    //CULog("CANNON,%llu",_counter);
     CUAssert(data.flag == CANNON_FLAG);
     _deserializer.reset();
     _deserializer.receive(data.data);
     auto cannon = _deserializer.readBool() ? _cannon1:_cannon2;
     float angle = _deserializer.readFloat();
-    float angDiff = 10*abs(cannon->getAngle()-angle);
+    float angDiff = 30*abs(cannon->getAngle()-angle);
     int steps = SDL_max(0,SDL_min(30,(int)angDiff));
     
     targetParam param;
@@ -867,7 +867,7 @@ void GameScene::preUpdate(float dt) {
     }
     
     if (!_objQueue.empty() && _isHost){
-        for(int ii = 0; ii < 1; ii++){
+        for(int ii = 0; ii < 5; ii++){
             transmitNetdata(packState(_counter));
         }
     }
