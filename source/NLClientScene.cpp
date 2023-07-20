@@ -118,7 +118,6 @@ bool ClientScene::init(const std::shared_ptr<cugl::AssetManager>& assets) {
 void ClientScene::dispose() {
     if (_active) {
         removeAllChildren();
-        _network = nullptr;
         _active = false;
     }
 }

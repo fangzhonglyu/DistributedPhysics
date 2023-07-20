@@ -14,17 +14,21 @@
 using namespace cugl;
 
 void Interpolator::addObject(std::shared_ptr<physics2::Obstacle> obj, std::shared_ptr<targetParam> param){
-    //if(_cache.count(obj))
-        //param->curStep = _cache.at(obj)->curStep;
-        //return;
+//    if(_cache.count(obj)){
+//        param->curStep = _cache.at(obj)->curStep;
+//    }
     _cache.erase(obj);
-    _cache.insert(std::make_pair(obj,param));
+    _cache.insert(obj,param));
     _stepSum += param->numSteps;
     _itprCount ++;
 //    Vec2 P0 = obj->getPosition();
 //    Vec2 P1 = obj->getPosition()+obj->getLinearVelocity();
 //    Vec3 P2 = Vec2(param->ste[0],param->second[1])-Vec2(param->second[2],param->second[3]);
 //    Vec3 P3 = Vec2(param->second[0],param->second[1]);
+}
+
+bool Interpolator::contains(std::shared_ptr<physics2::Obstacle> obj){
+    return _cache.count(obj) > 0;
 }
 
 void Interpolator::fixedUpdate(){
@@ -44,8 +48,8 @@ void Interpolator::fixedUpdate(){
             CUAssert(t<=1.f && t>=0.f);
             
             if(ITPR_METHOD == 1){
-                Vec2 P1 = obj->getPosition()+obj->getLinearVelocity();
-                Vec2 pos = (1-t)*(1-t)*(1-t)*obj->getPosition() + 3*(1-t)*(1-t)*t*P1 + 3*(1-t)*t*t*param->P2 + t*t*t*param->P3;
+                //Vec2 P1 = obj->getPosition()+obj->getLinearVelocity()/1.f;
+                Vec2 pos = (1-t)*(1-t)*(1-t)*param->P0 + 3*(1-t)*(1-t)*t*param->P1 + 3*(1-t)*t*t*param->P2 + t*t*t*param->P3;
                 obj->setPosition(pos);
             }
             else if (ITPR_METHOD == 2){
@@ -54,7 +58,7 @@ void Interpolator::fixedUpdate(){
             }
             else{
                 obj->setX(interpolate(stepsLeft,param->P3.x,obj->getX()));
-                obj->setY(interpolate(stepsLeft,param->P3.y,obj->getY()));	
+                obj->setY(interpolate(stepsLeft,param->P3.y,obj->getY()));
             }
             obj->setVX(interpolate(stepsLeft, param->targetVel.x, obj->getVX()));
             obj->setVY(interpolate(stepsLeft, param->targetVel.y, obj->getVY()));

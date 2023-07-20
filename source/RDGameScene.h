@@ -88,9 +88,13 @@ protected:
     
     std::shared_ptr<cugl::net::NetcodeConnection> _network;
     
-    cugl::net::NetcodeSerializer _serializer;
+//    cugl::net::NetcodeSerializer _serializer;
+//
+//    cugl::net::NetcodeDeserializer _deserializer;
     
-    cugl::net::NetcodeDeserializer _deserializer;
+    Serializer _serializer;
+
+    Deserializer _deserializer;
     
     Uint64 _counter;
     
@@ -102,9 +106,15 @@ protected:
     
     std::unordered_map<Uint32,std::shared_ptr<physics2::Obstacle>> _objMap;
     
+    std::unordered_map<std::shared_ptr<physics2::Obstacle>,std::shared_ptr<cugl::scene2::SceneNode>> _nodeMap;
+    
+    std::vector<std::vector<int>> _collisionMap;
+    
     Uint32 _nextObj;
     
     Interpolator _itpr;
+    
+    std::shared_ptr<cugl::physics2::BoxObstacle> _red;
     
 #pragma mark Internal Object Management
     

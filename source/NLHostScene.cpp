@@ -126,7 +126,6 @@ bool HostScene::init(const std::shared_ptr<cugl::AssetManager>& assets) {
 void HostScene::dispose() {
     if (_active) {
         removeAllChildren();
-        _network = nullptr;
         _active = false;
     }
 }

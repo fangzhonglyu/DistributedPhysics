@@ -52,11 +52,13 @@ using namespace cugl;
 #define DEFAULT_TURN_RATE 0.05f
 
 /** To automate the loading of crate files */
-#define NUM_CRATES 15
+#define NUM_CRATES 100
 
 #define INPUT_DELAY 2
 
 #define LOG_MSGS 0
+
+#define SYNC_NUM 5
 
 // Since these appear only once, we do not care about the magic numbers.
 // In an actual game, this information would go in a data file.
@@ -252,6 +254,9 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     addChild(_chargeBar);
     
     _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
+    _world->onBeginContact = [this](b2Contact* contact) {
+            beginContact(contact);
+        };
     _world->update(FIXED_TIMESTEP_S);
     
     populate(true);
@@ -337,7 +342,7 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos, boo
     // Create the sprite for this crate
     auto image  = _assets->get<Texture>(ss.str());
 
-    Size boxSize(image->getSize()/_scale);
+    Size boxSize(image->getSize()/_scale/2.f);
     auto crate = physics2::BoxObstacle::alloc(pos,boxSize);
     crate->setDebugColor(DYNAMIC_COLOR);
     crate->setName(ss.str());
@@ -351,11 +356,13 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos, boo
     
     auto sprite = scene2::PolygonNode::allocWithTexture(image);
     sprite->setAnchor(Vec2::ANCHOR_CENTER);
-    
+    sprite->setScale(0.5f);
     if(original){
         boxes.push_back(crate);
         nodes.push_back(sprite);
     }
+    
+    _nodeMap.insert(std::make_pair(crate,sprite));
     
     addObstacle(crate,sprite);   // PUT SAME TEXTURES IN SAME LAYER!!!
     return crate;
@@ -382,6 +389,8 @@ void GameScene::populate(bool isInit) {
     _objQueue = std::queue<Uint32>();
     _objMap.clear();
     _itpr.reset();
+    _collisionMap.clear();
+    _nodeMap.clear();
     
     _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
     _world->activateCollisionCallbacks(true);
@@ -418,6 +427,7 @@ void GameScene::populate(bool isInit) {
         wallobj1 = physics2::PolygonObstacle::allocWithAnchor(wall1,Vec2::ANCHOR_CENTER);
         wallobj1->setDebugColor(STATIC_COLOR);
         wallobj1->setName(wname);
+        wallobj1->_id = 1111111111;
 
         // Set the physics attributes
         wallobj1->setBodyType(b2_staticBody);
@@ -445,15 +455,20 @@ void GameScene::populate(bool isInit) {
         wallobj2->setDensity(BASIC_DENSITY);
         wallobj2->setFriction(BASIC_FRICTION);
         wallobj2->setRestitution(BASIC_RESTITUTION);
+        wallobj2->_id = 1111111111;
 
         // Add the scene graph nodes to this object
         wall2 *= _scale;
         wallsprite2 = scene2::PolygonNode::allocWithTexture(image,wall2);
         
 #pragma mark : Crates
+        Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-2) + 2, _rand() % (int)(DEFAULT_HEIGHT-2) + 2);
+        _red = addCrateAt(boxPos,true);
+        _nodeMap.at(_red)->setColor(Color4::YELLOW);
+        
         for (int ii = 0; ii < NUM_CRATES; ii++) {
             // Pick a crate and random and generate the key
-            Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
+            Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-2) + 2, _rand() % (int)(DEFAULT_HEIGHT-2) + 2);
             addCrateAt(boxPos,true);
         }
         
@@ -472,6 +487,7 @@ void GameScene::populate(bool isInit) {
         _cannon1->setDebugColor(DYNAMIC_COLOR);
         _cannon1->setSensor(true);
         _cannon1->setCannonNode(_cannon1Node);
+        _cannon1->_id = 1111111111;
             
         image  = _assets->get<Texture>(ROCK_TEXTURE);
         _cannon2Node = scene2::PolygonNode::allocWithTexture(image);
@@ -484,6 +500,7 @@ void GameScene::populate(bool isInit) {
         _cannon2->setDebugColor(DYNAMIC_COLOR);
         _cannon2->setSensor(true);
         _cannon2->setCannonNode(_cannon2Node);
+        _cannon2->_id = 1111111111;
     }
     
     if(isInit){
@@ -494,7 +511,8 @@ void GameScene::populate(bool isInit) {
         addObstacleAlt(wallobj1,wallsprite1);  // All walls share the same texture
         addObstacleAlt(wallobj2,wallsprite2);  // All walls share the same texture
         for(int ii = 0; ii < NUM_CRATES; ii++){
-            Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
+            //Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
+            Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-2) + 2, _rand() % (int)(DEFAULT_HEIGHT-2) + 2);
             boxes[ii]->setPosition(boxPos);
             boxes[ii]->setLinearVelocity(Vec2::ZERO);
             boxes[ii]->setAngle(0);
@@ -538,7 +556,9 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
     
     _objQueue.push(_nextObj);
     _objMap.insert(std::make_pair(_nextObj,obj));
+    obj->_id = _nextObj;
     _nextObj++;
+    _collisionMap.push_back(std::vector<int>());
     
     //obj->setDebugScene(_debugnode);
     
@@ -555,6 +575,7 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
             float angle = obs->getAngle()+leftover*obs->getAngularVelocity();
             weak->setPosition(pos*_scale);
             weak->setAngle(angle);
+            weak->setColor(_itpr.contains(obj)?Color4::RED:Color4::WHITE);
         });
     }
 }
@@ -589,22 +610,100 @@ netdata GameScene::packFire(Uint64 timestamp){
 }
 
 netdata GameScene::packState(Uint64 timestamp){
-    Uint32 id = _objQueue.front();
-    _objQueue.pop();
-    auto obj = _objMap.at(id);
+   
     netdata data;
     data.timestamp = timestamp;
     data.flag = STATE_SYNC_FLAG;
     _serializer.reset();
-    _serializer.writeUint32(id);
-    _serializer.writeFloat(obj->getX());
-    _serializer.writeFloat(obj->getY());
-    _serializer.writeFloat(obj->getVX());
-    _serializer.writeFloat(obj->getVY());
-    _serializer.writeFloat(obj->getAngle());
-    _serializer.writeFloat(obj->getAngularVelocity());
+    
+    std::vector<Uint32> velQueue;
+    
+    
+    for(auto it = _objMap.begin(); it != _objMap.end(); it++){
+        Uint32 id  = (*it).first;
+        auto obj = (*it).second;
+        velQueue.push_back(id);
+    }
+    
+    std::sort(velQueue.begin(),velQueue.end(),[this](Uint32 const& l, Uint32 const& r) {
+        return _objMap.at(l)->getLinearVelocity().length() > _objMap.at(r)->getLinearVelocity().length();
+        ; });
+    
+    Uint32 num = 0;
+    
+    _serializer.writeUint32(0);
+    
+    std::unordered_set<Uint32> list;
+    
+    for(size_t i = 0; i < 20; i++){
+        Uint32 id = _objQueue.front();
+        if(!list.count(id)){
+            _objQueue.pop();
+            auto obj = _objMap.at(id);
+            list.insert(id);
+            _serializer.writeUint32(id);
+            _serializer.writeFloat(obj->getX());
+            _serializer.writeFloat(obj->getY());
+            _serializer.writeFloat(obj->getVX());
+            _serializer.writeFloat(obj->getVY());
+            _serializer.writeFloat(obj->getAngle());
+            _serializer.writeFloat(obj->getAngularVelocity());
+            _objQueue.push(id);
+            num++;
+        }
+        for(auto it = _collisionMap[id].begin(); it !=_collisionMap[id].end(); it++){
+            Uint32 tid = (*it);
+            if(!list.count(id)){
+                auto obj2 = _objMap.at(tid);
+                _serializer.writeUint32(tid);
+                _serializer.writeFloat(obj2->getX());
+                _serializer.writeFloat(obj2->getY());
+                _serializer.writeFloat(obj2->getVX());
+                _serializer.writeFloat(obj2->getVY());
+                _serializer.writeFloat(obj2->getAngle());
+                _serializer.writeFloat(obj2->getAngularVelocity());
+                num++;
+            }
+        }
+    }
+    
+    for(size_t i = 0; i < 20; i++){
+        Uint32 id = velQueue[i];
+        
+        if(!list.count(id)){
+            auto obj = _objMap.at(id);
+            list.insert(id);
+            _serializer.writeUint32(id);
+            _serializer.writeFloat(obj->getX());
+            _serializer.writeFloat(obj->getY());
+            _serializer.writeFloat(obj->getVX());
+            _serializer.writeFloat(obj->getVY());
+            _serializer.writeFloat(obj->getAngle());
+            _serializer.writeFloat(obj->getAngularVelocity());
+            num++;
+        }
+        
+        for(auto it = _collisionMap[id].begin(); it !=_collisionMap[id].end(); it++){
+            Uint32 tid = (*it);
+            if(!list.count(id)){
+                auto obj2 = _objMap.at(tid);
+                _serializer.writeUint32(tid);
+                _serializer.writeFloat(obj2->getX());
+                _serializer.writeFloat(obj2->getY());
+                _serializer.writeFloat(obj2->getVX());
+                _serializer.writeFloat(obj2->getVY());
+                _serializer.writeFloat(obj2->getAngle());
+                _serializer.writeFloat(obj2->getAngularVelocity());
+                num++;
+            }
+        }
+        
+        _serializer.rewriteFirstUint32(num);
+        
+        CULog("%u",num);
+    }
+    
     data.data = _serializer.serialize();
-    _objQueue.push(id);
     return data;
 }
 
@@ -643,7 +742,6 @@ void GameScene::processFire(netdata data){
     }
     if(data.timestamp <= _counter){
         _deserializer.reset();
-        _deserializer.reset();
         _deserializer.receive(data.data);
         bool isHost = _deserializer.readBool();
         auto cannon = isHost ? _cannon1Node : _cannon2Node;
@@ -681,46 +779,39 @@ void GameScene::processState(netdata data){
     }
     _deserializer.reset();
     _deserializer.receive(data.data);
-    Uint32 id = _deserializer.readUint32();
-    float x = _deserializer.readFloat();
-    float y = _deserializer.readFloat();
-    float vx = _deserializer.readFloat();
-    float vy = _deserializer.readFloat();
-    float angle = _deserializer.readFloat();
-    float angV = _deserializer.readFloat();
-    if(!_objMap.count(id)){
-        CULogError("unknown object");
-        return;
+    Uint32 num = _deserializer.readUint32();
+    for(int i = 0; i < num; i++){
+        Uint32 id = _deserializer.readUint32();
+        float x = _deserializer.readFloat();
+        float y = _deserializer.readFloat();
+        float vx = _deserializer.readFloat();
+        float vy = _deserializer.readFloat();
+        float angle = _deserializer.readFloat();
+        float angV = _deserializer.readFloat();
+        if(!_objMap.count(id)){
+            CULogError("unknown object");
+            return;
+        }
+        auto obj = _objMap.at(id);
+        float diff = (obj->getPosition()-Vec2(x,y)).length();
+        float angDiff = 10*abs(obj->getAngle()-angle);
+        int steps = SDL_max(0,SDL_min(30,SDL_max((int)(diff*30),(int)angDiff)));
+        
+        targetParam param;
+        param.targetVel = Vec2(vx,vy);
+        param.targetAngle = angle;
+        param.targetAngV = angV;
+        param.curStep = 0;
+        param.numSteps = steps;
+        param.P0 = obj->getPosition();
+        //param.P1 = param.P0;
+        param.P1 = obj->getPosition()+obj->getLinearVelocity()/1.f;
+        param.P3 = Vec2(x,y);
+        //param.P2 = param.P3;
+        param.P2 = param.P3;
+        std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
+        _itpr.addObject(obj, paramP);
     }
-    auto obj = _objMap.at(id);
-    float diff = (obj->getPosition()-Vec2(x,y)).length();
-    float angDiff = 10*abs(obj->getAngle()-angle);
-    int steps = SDL_max(0,SDL_min(30,SDL_max((int)(diff*30),(int)angDiff)));
-    //x+=(steps)*FIXED_TIMESTEP_S*vx;
-    //y+=(steps)*FIXED_TIMESTEP_S*vy;
-    
-    targetParam param;
-    param.targetVel = Vec2(vx,vy);
-    param.targetAngle = angle;
-    param.targetAngV = angV;
-    param.curStep = 0;
-    param.numSteps = steps;
-    param.P0 = obj->getPosition();
-    //param.P1 = param.P0;
-    param.P1 = obj->getPosition()+obj->getLinearVelocity()/1.f;
-    param.P3 = Vec2(x,y);
-    //param.P2 = param.P3;
-    param.P2 = param.P3-param.targetVel/1.f;
-    std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
-    _itpr.addObject(obj, paramP);
-//    obj->setPosition(x, y);
-//    obj->setLinearVelocity(vx, vy);
-//    obj->setAngle(angle);
-//    obj->setAngularVelocity(angV);
-//    obj->setPosition(param[0], param[1]);
-//    obj->setLinearVelocity(param[2], param[3]);
-//    obj->setAngle(param[4]);
-//    obj->setAngularVelocity(param[5]);
 }
 
 void GameScene::processCannon(netdata data){
@@ -832,7 +923,7 @@ void GameScene::processData(const std::string source,
     msg.timestamp = _deserializer.readUint64();
     msg.sourceID = source;
     msg.flag = _deserializer.readUint32();
-    msg.data = { data.begin() + 14, data.end()};
+    msg.data = { data.begin() + 12, data.end()};
     msg.receivedBy = _counter;
     _netCache.push(msg, _counter);
 }
@@ -867,9 +958,11 @@ void GameScene::preUpdate(float dt) {
     }
     
     if (!_objQueue.empty() && _isHost){
-        for(int ii = 0; ii < 5; ii++){
-            transmitNetdata(packState(_counter));
-        }
+        transmitNetdata(packState(_counter));
+    }
+    
+    for (std::vector<int>& v: _collisionMap){
+        v.clear();
     }
     
     float turnRate = _isHost ? DEFAULT_TURN_RATE : -DEFAULT_TURN_RATE;
@@ -920,7 +1013,30 @@ void GameScene::update(float dt) {
  *
  * @param  contact  The two bodies that collided
  */
-void GameScene::beginContact(b2Contact* contact) {}
+void GameScene::beginContact(b2Contact* contact) {
+    b2Body *body1 = contact->GetFixtureA()->GetBody();
+    b2Body *body2 = contact->GetFixtureB()->GetBody();
+    
+    std::shared_ptr<physics2::Obstacle>& obj1= reinterpret_cast<std::shared_ptr<physics2::Obstacle>&>(body1->GetUserData().pointer);
+    
+    std::shared_ptr<physics2::Obstacle>& obj2= reinterpret_cast<std::shared_ptr<physics2::Obstacle>&>(body2->GetUserData().pointer);
+    
+    Uint32 obj1ID = obj1->_id;
+    Uint32 obj2ID = obj2->_id;
+    
+//    if(obj1 == _red){
+//        _nodeMap.at(obj2)->setColor(Color4::RED);
+//    }
+//
+//    if(obj2 == _red){
+//        _nodeMap.at(obj1)->setColor(Color4::RED);
+//    }
+    
+    if(obj1ID<_collisionMap.size() && obj2ID<_collisionMap.size()){
+        _collisionMap[obj1->_id].push_back(obj2ID);
+        _collisionMap[obj2->_id].push_back(obj1ID);
+    }
+}
 
 /**
  * Handles any modifications necessary before collision resolution

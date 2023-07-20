@@ -46,6 +46,8 @@ public:
         _deleteCache.clear();
     }
     
+    bool contains(std::shared_ptr<physics2::Obstacle> obj);
+    
     void addObject(std::shared_ptr<physics2::Obstacle> obj, std::shared_ptr<targetParam> param);
     
     void fixedUpdate();
