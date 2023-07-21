@@ -18,7 +18,7 @@ void Interpolator::addObject(std::shared_ptr<physics2::Obstacle> obj, std::share
 //        param->curStep = _cache.at(obj)->curStep;
 //    }
     _cache.erase(obj);
-    _cache.insert(obj,param));
+    _cache.insert(std::make_pair(obj,param));
     _stepSum += param->numSteps;
     _itprCount ++;
 //    Vec2 P0 = obj->getPosition();
