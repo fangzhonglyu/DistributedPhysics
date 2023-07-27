@@ -462,13 +462,13 @@ void GameScene::populate(bool isInit) {
         wallsprite2 = scene2::PolygonNode::allocWithTexture(image,wall2);
         
 #pragma mark : Crates
-        Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-2) + 2, _rand() % (int)(DEFAULT_HEIGHT-2) + 2);
+        Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-4) + 2, _rand() % (int)(DEFAULT_HEIGHT-4) + 2);
         _red = addCrateAt(boxPos,true);
         _nodeMap.at(_red)->setColor(Color4::YELLOW);
         
         for (int ii = 0; ii < NUM_CRATES; ii++) {
             // Pick a crate and random and generate the key
-            Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-2) + 2, _rand() % (int)(DEFAULT_HEIGHT-2) + 2);
+            Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-6) + 3, _rand() % (int)(DEFAULT_HEIGHT-6) + 3);
             addCrateAt(boxPos,true);
         }
         
@@ -512,7 +512,7 @@ void GameScene::populate(bool isInit) {
         addObstacleAlt(wallobj2,wallsprite2);  // All walls share the same texture
         for(int ii = 0; ii < NUM_CRATES; ii++){
             //Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
-            Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-2) + 2, _rand() % (int)(DEFAULT_HEIGHT-2) + 2);
+            Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-6) + 3, _rand() % (int)(DEFAULT_HEIGHT-6) + 3);
             boxes[ii]->setPosition(boxPos);
             boxes[ii]->setLinearVelocity(Vec2::ZERO);
             boxes[ii]->setAngle(0);
@@ -699,8 +699,6 @@ netdata GameScene::packState(Uint64 timestamp){
         }
         
         _serializer.rewriteFirstUint32(num);
-        
-        CULog("%u",num);
     }
     
     data.data = _serializer.serialize();
@@ -795,7 +793,7 @@ void GameScene::processState(netdata data){
         auto obj = _objMap.at(id);
         float diff = (obj->getPosition()-Vec2(x,y)).length();
         float angDiff = 10*abs(obj->getAngle()-angle);
-        int steps = SDL_max(0,SDL_min(30,SDL_max((int)(diff*30),(int)angDiff)));
+        int steps = SDL_max(1,SDL_min(30,SDL_max((int)(diff*30),(int)angDiff)));
         
         targetParam param;
         param.targetVel = Vec2(vx,vy);
