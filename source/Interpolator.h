@@ -22,6 +22,8 @@ typedef struct{
     Vec2 targetVel;
     float targetAngle;
     float targetAngV;
+    Vec2 I;
+    Uint64 numI;
 } targetParam;
 
 class Interpolator {

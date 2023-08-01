@@ -54,11 +54,15 @@ using namespace cugl;
 /** To automate the loading of crate files */
 #define NUM_CRATES 100
 
-#define INPUT_DELAY 2
+#define INPUT_DELAY 0
 
 #define LOG_MSGS 0
 
 #define SYNC_NUM 5
+
+#define PING 500.0f
+
+#define PING_STEP PING/1000.0f/FIXED_TIMESTEP_S
 
 // Since these appear only once, we do not care about the magic numbers.
 // In an actual game, this information would go in a data file.
@@ -269,6 +273,7 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     _deserializer.reset();
     
     _counter = 0;
+    _bound = 0;
     
     // XNA nostalgia
     Application::get()->setClearColor(Color4f::CORNFLOWER);
@@ -575,7 +580,15 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
             float angle = obs->getAngle()+leftover*obs->getAngularVelocity();
             weak->setPosition(pos*_scale);
             weak->setAngle(angle);
-            weak->setColor(_itpr.contains(obj)?Color4::RED:Color4::WHITE);
+            Color4 c = weak->getColor();
+            if(_itpr.contains(obj)){
+                if(c.g >= 10)
+                    weak->setColor(c.subtract(0, 10, 10));
+            }
+            else{
+                if(c.g <= 240)
+                    weak->setColor(c.add(0, 10, 10));
+            }
         });
     }
 }
@@ -847,12 +860,20 @@ void GameScene::processCannon(netdata data){
 }
 
 void GameScene::processCache(){
+    while(!_outCache.isEmpty() && _outCache.peek().receivedBy <= _counter){
+        netdata next = _outCache.pop();
+        transmitNetdata(next);
+    }
     
     if(_netCache.isEmpty()){
         return;
     }
+    
     while(!_netCache.isEmpty() && _netCache.peek().timestamp <= _counter){
         netdata next = _netCache.pop();
+        if(next.timestamp <= _bound){
+            continue;
+        }
         if(LOG_MSGS){
             _writer->writeLine(cugl::strtool::format("MESSAGE at %llu, received by %llu", next.timestamp, next.receivedBy));
         }
@@ -864,6 +885,7 @@ void GameScene::processCache(){
                 processFire(next);
                 break;
             case RESET_FLAG:
+                _bound = next.timestamp;
                 reset();
                 break;
             case STATE_SYNC_FLAG:
@@ -911,12 +933,21 @@ void GameScene::transmitNetdata(const netdata data){
     _network->broadcast(arr);
 }
 
+void GameScene::queueNetdata(netdata data){
+    data.receivedBy = _counter + 20;
+    _outCache.push(data, _counter);
+    _netCache.push(data, _counter);
+}
+
 void GameScene::processData(const std::string source,
                             const std::vector<std::byte>& data) {
 //    CULog(source.c_str());
 //    CULog("gotdata");
     _deserializer.reset();
     _deserializer.receive(data);
+    if(source == ""){
+        return;
+    }
     netdata msg;
     msg.timestamp = _deserializer.readUint64();
     msg.sourceID = source;
@@ -944,7 +975,7 @@ void GameScene::preUpdate(float dt) {
     // Process the toggled key commands
     if (_input.didDebug()) { setDebug(!isDebug()); }
     if (_input.didReset()) {
-        transmitNetdata(packReset(_counter+INPUT_DELAY));
+        queueNetdata(packReset(_counter+INPUT_DELAY));
     }
     if (_input.didExit()) {
         CULog("Shutting down");
@@ -952,11 +983,11 @@ void GameScene::preUpdate(float dt) {
     }
     
     if (_input.didFire()) {
-        transmitNetdata(packFire(_counter+INPUT_DELAY));
+        queueNetdata(packFire(_counter+INPUT_DELAY));
     }
     
     if (!_objQueue.empty() && _isHost){
-        transmitNetdata(packState(_counter));
+        queueNetdata(packState(_counter));
     }
     
     for (std::vector<int>& v: _collisionMap){
@@ -968,7 +999,7 @@ void GameScene::preUpdate(float dt) {
     //cannon->setAngularVelocity(_input.getVertical() * turnRate);
     cannon->setAngle(_input.getVertical() * turnRate + cannon->getAngle());
     
-    transmitNetdata(packCannon(_counter));
+    queueNetdata(packCannon(_counter));
 }
 
 void GameScene::postUpdate(float dt) {

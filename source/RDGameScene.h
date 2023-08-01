@@ -86,6 +86,8 @@ protected:
     
     NetCache _netCache;
     
+    NetCache _outCache;
+    
     std::shared_ptr<cugl::net::NetcodeConnection> _network;
     
 //    cugl::net::NetcodeSerializer _serializer;
@@ -97,6 +99,8 @@ protected:
     Deserializer _deserializer;
     
     Uint64 _counter;
+    
+    Uint64 _bound;
     
     std::shared_ptr<cugl::TextWriter> _writer;
     
@@ -182,6 +186,8 @@ private:
     bool checkConnection();
     
     void transmitNetdata(const netdata data);
+    
+    void queueNetdata(netdata data);
     
 public:
 #pragma mark -
