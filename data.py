@@ -43,7 +43,7 @@ for line in client:
 
 #create a 2d array to store the euclidean difference between host and client, host and client might not have the same number of timesteps
 diff = []
-for i in range(min(len(host_data), len(client_data))):
+for i in range(500):
     diff.append([])
     for j in range(min(len(host_data[i]), len(client_data[i]))):
         diff[i].append(((host_data[i][j][0] - client_data[i][j][0])**2 + (host_data[i][j][1] - client_data[i][j][1])**2)**0.5)
