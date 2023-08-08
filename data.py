@@ -1,6 +1,9 @@
 host = open("log_host.txt", "r")
 client = open("log_client.txt", "r")
 
+import matplotlib.pyplot as plt
+from scipy import stats
+
 #read data from log_host.txt and log_client.txt
 
 """
@@ -54,12 +57,14 @@ for i in range(len(diff)):
 avg_diff_all = sum(avg_diff)/len(avg_diff)
 
 #do a full stat of the difference with high 1%, and mean
-import numpy as np
-diff = np.array(diff)
-print("max diff: ", np.max(diff))
-print("min diff: ", np.min(diff))
-print("mean diff: ", np.mean(diff))
-print("std diff: ", np.std(diff))
-print("1% diff: ", np.percentile(diff, 99))
-print("avg diff: ", avg_diff_all)
+#im getting inhomgenous. fix it for me
+diff_stat = stats.describe(avg_diff)
+print(diff_stat)
+
+#plot the average euclidean difference for each timestep
+plt.plot(avg_diff)
+plt.ylabel("average euclidean difference")
+plt.xlabel("timestep")
+plt.show()
+
 
