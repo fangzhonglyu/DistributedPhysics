@@ -53,6 +53,10 @@ avg_diff = []
 for i in range(len(diff)):
     avg_diff.append(sum(diff[i])/len(diff[i]))
 
+high = []
+for i in range(len(diff)):
+    high.append(stats.scoreatpercentile(diff[i], 99))
+
 #calculate the average euclidean difference for all timesteps
 avg_diff_all = sum(avg_diff)/len(avg_diff)
 
@@ -61,10 +65,8 @@ avg_diff_all = sum(avg_diff)/len(avg_diff)
 diff_stat = stats.describe(avg_diff)
 print(diff_stat)
 
-#plot the average euclidean difference for each timestep
+#plot the average euclidean difference and high 1% for each timestep
 plt.plot(avg_diff)
-plt.ylabel("average euclidean difference")
-plt.xlabel("timestep")
+plt.plot(high)
 plt.show()
-
 
