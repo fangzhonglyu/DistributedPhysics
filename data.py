@@ -21,7 +21,7 @@ x,y
 ...
 """
 
-#read data from log_host.txt into a 2d array and convert the string to float
+#read data from log_host.txt into a 2d array and convert the string to float up to the first 500 timesteps
 host_data = []
 for line in host:
     if line == "\n":
@@ -29,9 +29,11 @@ for line in host:
     if line[0] == "t":
         host_data.append([])
         continue
+    if len(host_data) == 500:
+        break
     host_data[-1].append([float(x) for x in line.split(",")])
 
-#read data from log_client.txt into a 2d array and convert the string to float
+#read data from log_client.txt into a 2d array and convert the string to float up to the first 500 timesteps
 client_data = []
 for line in client:
     if line == "\n":
@@ -39,6 +41,8 @@ for line in client:
     if line[0] == "t":
         client_data.append([])
         continue
+    if len(client_data) == 500:
+        break
     client_data[-1].append([float(x) for x in line.split(",")])
 
 #create a 2d array to store the euclidean difference between host and client, host and client might not have the same number of timesteps
