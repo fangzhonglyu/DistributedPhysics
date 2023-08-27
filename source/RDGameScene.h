@@ -110,6 +110,8 @@ protected:
     
     std::unordered_map<Uint32,std::shared_ptr<physics2::Obstacle>> _objMap;
     
+    std::unordered_set<Uint32> _owned;
+    
     std::unordered_map<std::shared_ptr<physics2::Obstacle>,std::shared_ptr<cugl::scene2::SceneNode>> _nodeMap;
     
     std::vector<std::vector<int>> _collisionMap;
@@ -325,6 +327,8 @@ public:
     virtual void preUpdate(float timestep);
     virtual void postUpdate(float timestep);
     virtual void fixedUpdate();
+    
+    void logData();
 
 #else
     /**
@@ -346,6 +350,8 @@ public:
      * Packs a fire input message
      */
     netdata packFire(Uint64 timestamp);
+    
+    netdata packFire(Uint64 timestamp,float power);
     
     netdata packState(Uint64 timestamp);
     

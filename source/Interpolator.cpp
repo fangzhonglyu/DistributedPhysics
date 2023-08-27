@@ -9,7 +9,7 @@
 
 #define ITPR_STATS 0
 
-#define ITPR_METHOD 3
+#define ITPR_METHOD 0
 
 using namespace cugl;
 
@@ -22,7 +22,12 @@ void Interpolator::addObject(std::shared_ptr<physics2::Obstacle> obj, std::share
 //            obj->setAngularVelocity(oldParam->targetAngV);
 //        }
     if(_cache.count(obj)){
+        #if ITPR_METHOD == 1
+        return;
+        #endif
         auto oldParam = _cache.at(obj);
+        obj->setLinearVelocity(oldParam->targetVel);
+        obj->setAngularVelocity(oldParam->targetAngV);
         param->I = oldParam->I;
         param->numI = oldParam->numI;
     }
@@ -59,7 +64,7 @@ void Interpolator::fixedUpdate(){
             CUAssert(t<=1.f && t>=0.f);
             
             #if ITPR_METHOD == 1
-            Vec2 P1 = obj->getPosition()+obj->getLinearVelocity()/1.f;
+            Vec2 P1 = obj->getPosition()+obj->getLinearVelocity()/10.f;
             Vec2 pos = (1-t)*(1-t)*(1-t)*obj->getPosition() + 3*(1-t)*(1-t)*t*P1 + 3*(1-t)*t*t*param->P2 + t*t*t*param->P3;
             obj->setPosition(pos);
             

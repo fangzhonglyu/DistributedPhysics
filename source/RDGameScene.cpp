@@ -60,9 +60,11 @@ using namespace cugl;
 
 #define SYNC_NUM 5
 
-#define PING 500.0f
+#define PING 200.0f
 
-#define PING_STEP PING/1000.0f/FIXED_TIMESTEP_S
+#define PING_STEP PING/1000.0f/(FIXED_TIMESTEP_S)
+
+#define LOG_POS 1
 
 // Since these appear only once, we do not care about the magic numbers.
 // In an actual game, this information would go in a data file.
@@ -293,7 +295,7 @@ void GameScene::dispose() {
         _winnode = nullptr;
         _complete = false;
         _debug = false;
-        if(LOG_MSGS){
+        if(LOG_MSGS || LOG_POS){
             _writer->flush();
             _writer->close();
         }
@@ -303,7 +305,7 @@ void GameScene::dispose() {
 
 void GameScene::setHost(bool isHost){
     _isHost = isHost;
-    if(LOG_MSGS){
+    if(LOG_MSGS || LOG_POS){
         _writer = _writer->alloc(isHost?"log_host.txt":"log_client.txt");
     }
 }
@@ -396,6 +398,7 @@ void GameScene::populate(bool isInit) {
     _itpr.reset();
     _collisionMap.clear();
     _nodeMap.clear();
+    _owned.clear();
     
     _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
     _world->activateCollisionCallbacks(true);
@@ -469,7 +472,6 @@ void GameScene::populate(bool isInit) {
 #pragma mark : Crates
         Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-4) + 2, _rand() % (int)(DEFAULT_HEIGHT-4) + 2);
         _red = addCrateAt(boxPos,true);
-        _nodeMap.at(_red)->setColor(Color4::YELLOW);
         
         for (int ii = 0; ii < NUM_CRATES; ii++) {
             // Pick a crate and random and generate the key
@@ -583,11 +585,11 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
             Color4 c = weak->getColor();
             if(_itpr.contains(obj)){
                 if(c.g >= 10)
-                    weak->setColor(c.subtract(0, 10, 10));
+                    weak->setColor(c.subtract(0, 5, 5));
             }
             else{
                 if(c.g <= 240)
-                    weak->setColor(c.add(0, 10, 10));
+                    weak->setColor(c.add(0, 5, 5));
             }
         });
     }
@@ -622,6 +624,20 @@ netdata GameScene::packFire(Uint64 timestamp){
     return data;
 }
 
+netdata GameScene::packFire(Uint64 timestamp, float power){
+    netdata data;
+    data.timestamp = timestamp;
+    data.flag = FIRE_INPUT_FLAG;
+    _serializer.reset();
+    _serializer.writeBool(_isHost);
+    auto cannon = _isHost ? _cannon1Node : _cannon2Node;
+    float angle = cannon->getAngle();
+    _serializer.writeFloat(angle);
+    _serializer.writeFloat(power);
+    data.data = _serializer.serialize();
+    return data;
+}
+
 netdata GameScene::packState(Uint64 timestamp){
    
     netdata data;
@@ -629,89 +645,102 @@ netdata GameScene::packState(Uint64 timestamp){
     data.flag = STATE_SYNC_FLAG;
     _serializer.reset();
     
-    std::vector<Uint32> velQueue;
-    
-    
-    for(auto it = _objMap.begin(); it != _objMap.end(); it++){
-        Uint32 id  = (*it).first;
-        auto obj = (*it).second;
-        velQueue.push_back(id);
-    }
-    
-    std::sort(velQueue.begin(),velQueue.end(),[this](Uint32 const& l, Uint32 const& r) {
-        return _objMap.at(l)->getLinearVelocity().length() > _objMap.at(r)->getLinearVelocity().length();
-        ; });
-    
-    Uint32 num = 0;
-    
-    _serializer.writeUint32(0);
-    
-    std::unordered_set<Uint32> list;
-    
-    for(size_t i = 0; i < 20; i++){
-        Uint32 id = _objQueue.front();
-        if(!list.count(id)){
-            _objQueue.pop();
-            auto obj = _objMap.at(id);
-            list.insert(id);
-            _serializer.writeUint32(id);
-            _serializer.writeFloat(obj->getX());
-            _serializer.writeFloat(obj->getY());
-            _serializer.writeFloat(obj->getVX());
-            _serializer.writeFloat(obj->getVY());
-            _serializer.writeFloat(obj->getAngle());
-            _serializer.writeFloat(obj->getAngularVelocity());
-            _objQueue.push(id);
-            num++;
+    if(_isHost){
+        std::vector<Uint32> velQueue;
+        for(auto it = _objMap.begin(); it != _objMap.end(); it++){
+            Uint32 id  = (*it).first;
+            auto obj = (*it).second;
+            velQueue.push_back(id);
         }
-        for(auto it = _collisionMap[id].begin(); it !=_collisionMap[id].end(); it++){
-            Uint32 tid = (*it);
+        
+        std::sort(velQueue.begin(),velQueue.end(),[this](Uint32 const& l, Uint32 const& r) {
+            return _objMap.at(l)->getLinearVelocity().length() > _objMap.at(r)->getLinearVelocity().length();
+            ; });
+        
+        Uint32 num = 0;
+        
+        _serializer.writeUint32(0);
+        
+        std::unordered_set<Uint32> list;
+        
+        for(size_t i = 0; i < 20; i++){
+            Uint32 id = _objQueue.front();
             if(!list.count(id)){
-                auto obj2 = _objMap.at(tid);
-                _serializer.writeUint32(tid);
-                _serializer.writeFloat(obj2->getX());
-                _serializer.writeFloat(obj2->getY());
-                _serializer.writeFloat(obj2->getVX());
-                _serializer.writeFloat(obj2->getVY());
-                _serializer.writeFloat(obj2->getAngle());
-                _serializer.writeFloat(obj2->getAngularVelocity());
+                _objQueue.pop();
+                auto obj = _objMap.at(id);
+                list.insert(id);
+                _serializer.writeUint32(id);
+                _serializer.writeFloat(obj->getX());
+                _serializer.writeFloat(obj->getY());
+                _serializer.writeFloat(obj->getVX());
+                _serializer.writeFloat(obj->getVY());
+                _serializer.writeFloat(obj->getAngle());
+                _serializer.writeFloat(obj->getAngularVelocity());
+                _objQueue.push(id);
                 num++;
             }
-        }
-    }
-    
-    for(size_t i = 0; i < 20; i++){
-        Uint32 id = velQueue[i];
-        
-        if(!list.count(id)){
-            auto obj = _objMap.at(id);
-            list.insert(id);
-            _serializer.writeUint32(id);
-            _serializer.writeFloat(obj->getX());
-            _serializer.writeFloat(obj->getY());
-            _serializer.writeFloat(obj->getVX());
-            _serializer.writeFloat(obj->getVY());
-            _serializer.writeFloat(obj->getAngle());
-            _serializer.writeFloat(obj->getAngularVelocity());
-            num++;
+//            for(auto it = _collisionMap[id].begin(); it !=_collisionMap[id].end(); it++){
+//                Uint32 tid = (*it);
+//                if(!list.count(id)){
+//                    auto obj2 = _objMap.at(tid);
+//                    _serializer.writeUint32(tid);
+//                    _serializer.writeFloat(obj2->getX());
+//                    _serializer.writeFloat(obj2->getY());
+//                    _serializer.writeFloat(obj2->getVX());
+//                    _serializer.writeFloat(obj2->getVY());
+//                    _serializer.writeFloat(obj2->getAngle());
+//                    _serializer.writeFloat(obj2->getAngularVelocity());
+//                    num++;
+//                }
+//            }
         }
         
-        for(auto it = _collisionMap[id].begin(); it !=_collisionMap[id].end(); it++){
-            Uint32 tid = (*it);
+        for(size_t i = 0; i < 20; i++){
+            Uint32 id = velQueue[i];
+            
             if(!list.count(id)){
-                auto obj2 = _objMap.at(tid);
-                _serializer.writeUint32(tid);
-                _serializer.writeFloat(obj2->getX());
-                _serializer.writeFloat(obj2->getY());
-                _serializer.writeFloat(obj2->getVX());
-                _serializer.writeFloat(obj2->getVY());
-                _serializer.writeFloat(obj2->getAngle());
-                _serializer.writeFloat(obj2->getAngularVelocity());
+                auto obj = _objMap.at(id);
+                list.insert(id);
+                _serializer.writeUint32(id);
+                _serializer.writeFloat(obj->getX());
+                _serializer.writeFloat(obj->getY());
+                _serializer.writeFloat(obj->getVX());
+                _serializer.writeFloat(obj->getVY());
+                _serializer.writeFloat(obj->getAngle());
+                _serializer.writeFloat(obj->getAngularVelocity());
                 num++;
             }
+            
+            for(auto it = _collisionMap[id].begin(); it !=_collisionMap[id].end(); it++){
+                Uint32 tid = (*it);
+                if(!list.count(id)){
+                    auto obj2 = _objMap.at(tid);
+                    _serializer.writeUint32(tid);
+                    _serializer.writeFloat(obj2->getX());
+                    _serializer.writeFloat(obj2->getY());
+                    _serializer.writeFloat(obj2->getVX());
+                    _serializer.writeFloat(obj2->getVY());
+                    _serializer.writeFloat(obj2->getAngle());
+                    _serializer.writeFloat(obj2->getAngularVelocity());
+                    num++;
+                }
+            }
         }
-        
         _serializer.rewriteFirstUint32(num);
+    }
+    else{
+        _serializer.writeUint32((Uint32)_owned.size());
+        for(auto it = _owned.begin(); it != _owned.end(); it++){
+            Uint32 tid = (*it);
+            auto obj2 = _objMap.at(tid);
+            _serializer.writeUint32(tid);
+            _serializer.writeFloat(obj2->getX());
+            _serializer.writeFloat(obj2->getY());
+            _serializer.writeFloat(obj2->getVX());
+            _serializer.writeFloat(obj2->getVY());
+            _serializer.writeFloat(obj2->getAngle());
+            _serializer.writeFloat(obj2->getAngularVelocity());
+        }
     }
     
     data.data = _serializer.serialize();
@@ -744,6 +773,7 @@ union {
 } f2u;
 
 void GameScene::processFire(netdata data){
+    
     CUAssert(data.flag == FIRE_INPUT_FLAG);
     if(data.timestamp < _counter){
         if(LOG_MSGS){
@@ -751,29 +781,33 @@ void GameScene::processFire(netdata data){
         }
         CULogError("Simulation Corrupted, State Synchronization Needed");
     }
-    if(data.timestamp <= _counter){
-        _deserializer.reset();
-        _deserializer.receive(data.data);
-        bool isHost = _deserializer.readBool();
-        auto cannon = isHost ? _cannon1Node : _cannon2Node;
-        float angle = _deserializer.readFloat() + M_PI_2;
-        float firePower = _deserializer.readFloat();
-        Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
-        Vec2 pos = cannon->getPosition()/_scale+1.5f*forward;
-        auto crate = addCrateAt(pos,false);
-        //crate->setBodyType(b2_kinematicBody);
-        crate->setLinearVelocity(forward*50*firePower);
+
+    _deserializer.reset();
+    _deserializer.receive(data.data);
+    bool isHost = _deserializer.readBool();
+    auto cannon = isHost ? _cannon1Node : _cannon2Node;
+    float angle = _deserializer.readFloat() + M_PI_2;
+    float firePower = _deserializer.readFloat();
+    Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
+    Vec2 pos = cannon->getPosition()/_scale+1.5f*forward;
+    auto crate = addCrateAt(pos,false);
+    //crate->setBodyType(b2_kinematicBody);
+    crate->setLinearVelocity(forward*50*firePower);
     
-        f2u.f = firePower;
-        uint32_t fpu = f2u.u;
-        f2u.f = angle;
-        f2u.f = angle;
-        uint32_t au = f2u.u;
-        if(LOG_MSGS){
-            _writer->writeLine(cugl::strtool::format("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu));
-        }
-        CULog("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu);
+    if(data.sourceID==""){
+        _owned.insert(crate->_id);
     }
+    
+    f2u.f = firePower;
+    uint32_t fpu = f2u.u;
+    f2u.f = angle;
+    f2u.f = angle;
+    uint32_t au = f2u.u;
+    if(LOG_MSGS){
+        _writer->writeLine(cugl::strtool::format("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu));
+    }
+    CULog("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu);
+    
 }
 
 void GameScene::processState(netdata data){
@@ -793,6 +827,9 @@ void GameScene::processState(netdata data){
     Uint32 num = _deserializer.readUint32();
     for(int i = 0; i < num; i++){
         Uint32 id = _deserializer.readUint32();
+        if(_owned.count(id)){
+            continue;
+        }
         float x = _deserializer.readFloat();
         float y = _deserializer.readFloat();
         float vx = _deserializer.readFloat();
@@ -816,25 +853,24 @@ void GameScene::processState(netdata data){
         param.numSteps = steps;
         param.P0 = obj->getPosition();
         //param.P1 = param.P0;
-        param.P1 = obj->getPosition()+obj->getLinearVelocity()/1.f;
+        param.P1 = obj->getPosition()+obj->getLinearVelocity()/10.f;
         param.P3 = Vec2(x,y);
         //param.P2 = param.P3;
-        param.P2 = param.P3;
+        param.P2 = param.P3;//-param.targetVel/10.f;
         std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
         _itpr.addObject(obj, paramP);
     }
 }
 
 void GameScene::processCannon(netdata data){
-    if(data.sourceID == ""){
-        //CULog("Ignoring state sync from self.");
-        return;
-    }
-    //CULog("CANNON,%llu",_counter);
     CUAssert(data.flag == CANNON_FLAG);
     _deserializer.reset();
     _deserializer.receive(data.data);
-    auto cannon = _deserializer.readBool() ? _cannon1:_cannon2;
+    bool which = _deserializer.readBool();
+    if(which == _isHost)
+        return;
+    CULog("CANNON,%llu",_counter);
+    auto cannon =  which ? _cannon1:_cannon2;
     float angle = _deserializer.readFloat();
     float angDiff = 30*abs(cannon->getAngle()-angle);
     int steps = SDL_max(0,SDL_min(30,(int)angDiff));
@@ -869,7 +905,7 @@ void GameScene::processCache(){
         return;
     }
     
-    while(!_netCache.isEmpty() && _netCache.peek().timestamp <= _counter){
+    while(!_netCache.isEmpty()){
         netdata next = _netCache.pop();
         if(next.timestamp <= _bound){
             continue;
@@ -934,7 +970,7 @@ void GameScene::transmitNetdata(const netdata data){
 }
 
 void GameScene::queueNetdata(netdata data){
-    data.receivedBy = _counter + 20;
+    data.receivedBy = _counter + PING_STEP;
     _outCache.push(data, _counter);
     _netCache.push(data, _counter);
 }
@@ -986,7 +1022,7 @@ void GameScene::preUpdate(float dt) {
         queueNetdata(packFire(_counter+INPUT_DELAY));
     }
     
-    if (!_objQueue.empty() && _isHost){
+    if (!_objQueue.empty()){
         queueNetdata(packState(_counter));
     }
     
@@ -998,8 +1034,6 @@ void GameScene::preUpdate(float dt) {
     auto cannon = _isHost ? _cannon1 : _cannon2;
     //cannon->setAngularVelocity(_input.getVertical() * turnRate);
     cannon->setAngle(_input.getVertical() * turnRate + cannon->getAngle());
-    
-    queueNetdata(packCannon(_counter));
 }
 
 void GameScene::postUpdate(float dt) {
@@ -1007,11 +1041,32 @@ void GameScene::postUpdate(float dt) {
 }
 
 void GameScene::fixedUpdate() {
+    queueNetdata(packCannon(_counter));
     updateNet();
     processCache();
+    if(_counter == 100 && _isHost){
+        queueNetdata(packFire(_counter+INPUT_DELAY,1.0f));
+    }
+    if(_counter == 200 && !_isHost){
+        queueNetdata(packFire(_counter+INPUT_DELAY,1.0f));
+    }
     _world->update(FIXED_TIMESTEP_S);
     _itpr.fixedUpdate();
+    if(LOG_POS)
+        logData();
     _counter++;
+}
+
+void GameScene::logData() {
+    _writer->writeLine(cugl::strtool::format("timestep %u",_counter));
+    for(Uint32 i = 0; i < _nextObj; i++){
+        auto obj = _objMap.at(i);
+        _writer->write(obj->getX());
+        _writer->write(",");
+        _writer->write(obj->getY());
+        _writer->write("\n");
+    }
+    _writer->write("\n");
 }
 
 #else
@@ -1052,14 +1107,6 @@ void GameScene::beginContact(b2Contact* contact) {
     
     Uint32 obj1ID = obj1->_id;
     Uint32 obj2ID = obj2->_id;
-    
-//    if(obj1 == _red){
-//        _nodeMap.at(obj2)->setColor(Color4::RED);
-//    }
-//
-//    if(obj2 == _red){
-//        _nodeMap.at(obj1)->setColor(Color4::RED);
-//    }
     
     if(obj1ID<_collisionMap.size() && obj2ID<_collisionMap.size()){
         _collisionMap[obj1->_id].push_back(obj2ID);
