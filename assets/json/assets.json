@@ -34,6 +34,50 @@
         },
         "left": {
             "file":  "textures/left_arrow.png"
+        },
+        "background": {
+            "file":     "textures/fishtank.png"
+        },
+        "foreground": {
+            "file":     "textures/foreground.png"
+        },
+        "head": {
+            "file":      "textures/ProfWhite.png",
+            "minfilter": "linear",
+            "magfilter": "linear"
+        },
+        "body": {
+            "file":      "textures/tux_body.png",
+            "minfilter": "linear",
+            "magfilter": "linear"
+        },
+        "arm": {
+            "file":      "textures/tux_arm.png",
+            "minfilter": "linear",
+            "magfilter": "linear"
+        },
+        "forearm": {
+            "file":      "textures/tux_forearm.png",
+            "minfilter": "linear",
+            "magfilter": "linear"
+        },
+        "thigh": {
+            "file":      "textures/tux_thigh.png",
+            "minfilter": "linear",
+            "magfilter": "linear"
+        },
+        "shin": {
+            "file":      "textures/tux_shin.png",
+            "minfilter": "linear",
+            "magfilter": "linear"
+        },
+        "bubble": {
+            "file":      "textures/bubble.png",
+            "minfilter": "linear",
+            "magfilter": "linear"
+        },
+        "crosshair": {
+            "file":     "textures/crosshair.png"
         }
 	},
     "jsons": {

@@ -66,6 +66,9 @@ using namespace cugl;
 
 #define LOG_POS 1
 
+/** The initial position of the ragdoll head */
+float DOLL_POS[] = { 16, 10 };
+
 // Since these appear only once, we do not care about the magic numbers.
 // In an actual game, this information would go in a data file.
 // IMPORTANT: Note that Box2D units do not equal drawing units
@@ -276,6 +279,10 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     
     _counter = 0;
     _bound = 0;
+
+    _selector = physics2::ObstacleSelector::alloc(_world);
+    _selector->setDebugColor(DYNAMIC_COLOR);
+    _selector->setDebugScene(_debugnode);
     
     // XNA nostalgia
     Application::get()->setClearColor(Color4f::CORNFLOWER);
@@ -412,133 +419,96 @@ void GameScene::populate(bool isInit) {
     Timestamp world;
     CULog("World reinit in %fms",world.ellapsedMicros(start)/1000.f);
     
-    if(isInit){
-        std::shared_ptr<Texture> image;
-        //std::shared_ptr<scene2::PolygonNode> sprite;
-        
+    std::shared_ptr<Texture> image;
+    //std::shared_ptr<scene2::PolygonNode> sprite;
+
 #pragma mark : Wall polygon 1
-        
+
         // Create ground pieces
         // All walls share the same texture
-        image  = _assets->get<Texture>(EARTH_TEXTURE);
-        std::string wname = "wall";
+    image = _assets->get<Texture>(EARTH_TEXTURE);
+    std::string wname = "wall";
 
-        // Create the polygon outline
-        Poly2 wall1(reinterpret_cast<Vec2*>(WALL1),11);
-        EarclipTriangulator triangulator;
-        triangulator.set(wall1.vertices);
-        triangulator.calculate();
-        wall1.setIndices(triangulator.getTriangulation());
-        triangulator.clear();
+    // Create the polygon outline
+    Poly2 wall1(reinterpret_cast<Vec2*>(WALL1), 11);
+    EarclipTriangulator triangulator;
+    triangulator.set(wall1.vertices);
+    triangulator.calculate();
+    wall1.setIndices(triangulator.getTriangulation());
+    triangulator.clear();
 
-        //std::shared_ptr<physics2::PolygonObstacle> wallobj;
-        wallobj1 = physics2::PolygonObstacle::allocWithAnchor(wall1,Vec2::ANCHOR_CENTER);
-        wallobj1->setDebugColor(STATIC_COLOR);
-        wallobj1->setName(wname);
-        wallobj1->_id = 1111111111;
+    //std::shared_ptr<physics2::PolygonObstacle> wallobj;
+    wallobj1 = physics2::PolygonObstacle::allocWithAnchor(wall1, Vec2::ANCHOR_CENTER);
+    wallobj1->setDebugColor(STATIC_COLOR);
+    wallobj1->setName(wname);
+    wallobj1->_id = 1111111111;
 
-        // Set the physics attributes
-        wallobj1->setBodyType(b2_staticBody);
-        wallobj1->setDensity(BASIC_DENSITY);
-        wallobj1->setFriction(BASIC_FRICTION);
-        wallobj1->setRestitution(BASIC_RESTITUTION);
+    // Set the physics attributes
+    wallobj1->setBodyType(b2_staticBody);
+    wallobj1->setDensity(BASIC_DENSITY);
+    wallobj1->setFriction(BASIC_FRICTION);
+    wallobj1->setRestitution(BASIC_RESTITUTION);
 
-        // Add the scene graph nodes to this object
-        wall1 *= _scale;
-        wallsprite1 = scene2::PolygonNode::allocWithTexture(image,wall1);
-        
+    // Add the scene graph nodes to this object
+    wall1 *= _scale;
+    wallsprite1 = scene2::PolygonNode::allocWithTexture(image, wall1);
+
 #pragma mark : Wall polygon 2
-        Poly2 wall2(reinterpret_cast<Vec2*>(WALL2),9);
-        triangulator.set(wall2.vertices);
-        triangulator.calculate();
-        wall2.setIndices(triangulator.getTriangulation());
-        triangulator.clear();
+    Poly2 wall2(reinterpret_cast<Vec2*>(WALL2), 9);
+    triangulator.set(wall2.vertices);
+    triangulator.calculate();
+    wall2.setIndices(triangulator.getTriangulation());
+    triangulator.clear();
 
-        wallobj2 = physics2::PolygonObstacle::allocWithAnchor(wall2,Vec2::ANCHOR_CENTER);
-        wallobj2->setDebugColor(STATIC_COLOR);
-        wallobj2->setName(wname);
+    wallobj2 = physics2::PolygonObstacle::allocWithAnchor(wall2, Vec2::ANCHOR_CENTER);
+    wallobj2->setDebugColor(STATIC_COLOR);
+    wallobj2->setName(wname);
 
-        // Set the physics attributes
-        wallobj2->setBodyType(b2_staticBody);
-        wallobj2->setDensity(BASIC_DENSITY);
-        wallobj2->setFriction(BASIC_FRICTION);
-        wallobj2->setRestitution(BASIC_RESTITUTION);
-        wallobj2->_id = 1111111111;
+    // Set the physics attributes
+    wallobj2->setBodyType(b2_staticBody);
+    wallobj2->setDensity(BASIC_DENSITY);
+    wallobj2->setFriction(BASIC_FRICTION);
+    wallobj2->setRestitution(BASIC_RESTITUTION);
+    wallobj2->_id = 1111111111;
 
-        // Add the scene graph nodes to this object
-        wall2 *= _scale;
-        wallsprite2 = scene2::PolygonNode::allocWithTexture(image,wall2);
-        
-#pragma mark : Crates
-        Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-4) + 2, _rand() % (int)(DEFAULT_HEIGHT-4) + 2);
-        _red = addCrateAt(boxPos,true);
-        
-        for (int ii = 0; ii < NUM_CRATES; ii++) {
-            // Pick a crate and random and generate the key
-            Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-6) + 3, _rand() % (int)(DEFAULT_HEIGHT-6) + 3);
-            addCrateAt(boxPos,true);
-        }
-        
-#pragma mark : Cannon
-        image  = _assets->get<Texture>(ROCK_TEXTURE);
-        
-        _cannon1Node = scene2::PolygonNode::allocWithTexture(image);
-        
-        Size canSize(image->getSize()/_scale);
-        
-        Vec2 canPos1 = ((Vec2)CAN1_POS);
-        _cannon1 = CannonModel::alloc(canPos1,canSize,DEFAULT_TURN_RATE);
-        _cannon1->setBodyType(b2BodyType::b2_kinematicBody);
-        _cannon1->setDrawScale(_scale);
-        _cannon1->setAngle(-M_PI_2);
-        _cannon1->setDebugColor(DYNAMIC_COLOR);
-        _cannon1->setSensor(true);
-        _cannon1->setCannonNode(_cannon1Node);
-        _cannon1->_id = 1111111111;
-            
-        image  = _assets->get<Texture>(ROCK_TEXTURE);
-        _cannon2Node = scene2::PolygonNode::allocWithTexture(image);
-        
-        Vec2 canPos2 = ((Vec2)CAN2_POS);
-        _cannon2= CannonModel::alloc(canPos2,canSize,-DEFAULT_TURN_RATE);
-        _cannon2->setBodyType(b2BodyType::b2_kinematicBody);
-        _cannon2->setDrawScale(_scale);
-        _cannon2->setAngle(M_PI_2);
-        _cannon2->setDebugColor(DYNAMIC_COLOR);
-        _cannon2->setSensor(true);
-        _cannon2->setCannonNode(_cannon2Node);
-        _cannon2->_id = 1111111111;
-    }
+    // Add the scene graph nodes to this object
+    wall2 *= _scale;
+    wallsprite2 = scene2::PolygonNode::allocWithTexture(image, wall2);
+
+#pragma mark : Ragdoll
+    // Allocate the ragdoll and set its (empty) node. Its model handles creation of parts 
+    // (both obstacles and nodes to be drawn) upon alllocation and setting the scene node.
+    _ragdoll = RagdollModel::alloc(DOLL_POS, _scale);
+    _ragdoll->buildParts(_assets);
+
+    auto ragdollNode = scene2::SceneNode::alloc();
+    // Add the ragdollNode to the world before calling setSceneNode, as noted in the documentation for the Ragdoll's method.
+    _worldnode->addChild(ragdollNode);
+    _ragdoll->setSceneNode(ragdollNode);
+
+    _ragdoll->setDrawScale(_scale);
+    _ragdoll->setDebugColor(DYNAMIC_COLOR);
+    _ragdoll->setDebugScene(_debugnode);
+    for(size_t i = 0; i < _ragdoll->getBodies().size(); i++) {
+        auto obj = _ragdoll->getBodies()[i];
+        _objQueue.push(_nextObj);
+        _objMap.insert(std::make_pair(_nextObj, obj));
+        obj->_id = _nextObj;
+        _nextObj++;
+        _collisionMap.push_back(std::vector<int>());
+	}
+
+    _world->addObstacle(_ragdoll);
     
-    if(isInit){
-        addObstacle(wallobj1,wallsprite1);  // All walls share the same texture
-        addObstacle(wallobj2,wallsprite2);  // All walls share the same texture
-    }
-    else{
-        addObstacleAlt(wallobj1,wallsprite1);  // All walls share the same texture
-        addObstacleAlt(wallobj2,wallsprite2);  // All walls share the same texture
-        for(int ii = 0; ii < NUM_CRATES; ii++){
-            //Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
-            Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-6) + 3, _rand() % (int)(DEFAULT_HEIGHT-6) + 3);
-            boxes[ii]->setPosition(boxPos);
-            boxes[ii]->setLinearVelocity(Vec2::ZERO);
-            boxes[ii]->setAngle(0);
-            boxes[ii]->setAngularVelocity(0);
-            addObstacleAlt(boxes[ii], nodes[ii]);
-        }
-    }
+
+#pragma mark: Mouse Cross Hair
+    image = _assets->get<Texture>("crosshair");
+    _crosshair = scene2::PolygonNode::allocWithTexture(image);
+    _worldnode->addChild(_crosshair);
+    _crosshair->setVisible(false);
     
-    Vec2 canPos1 = ((Vec2)CAN1_POS);
-    _cannon1->setPosition(canPos1);
-    _cannon1->setAngle(-M_PI_2);
-    _world->addObstacle(_cannon1);
-    _worldnode->addChild(_cannon1Node);
-    
-    Vec2 canPos2 = ((Vec2)CAN2_POS);
-    _cannon2->setPosition(canPos2);
-    _cannon2->setAngle(M_PI_2);
-    _world->addObstacle(_cannon2);
-    _worldnode->addChild(_cannon2Node);
+    addObstacle(wallobj1,wallsprite1);  // All walls share the same texture
+    addObstacle(wallobj2,wallsprite2);  // All walls share the same texture
 
     Timestamp end;
     CULog("World reset in %fms",end.ellapsedMicros(start)/1000.f);
@@ -616,7 +586,7 @@ netdata GameScene::packFire(Uint64 timestamp){
     auto cannon = _isHost ? _cannon1Node : _cannon2Node;
     float angle = cannon->getAngle();
     _serializer.writeFloat(angle);
-    float firepower = _input.getFirePower();
+    float firepower = 0;
     _serializer.writeFloat(firepower);
     data.data = _serializer.serialize();
     //float delayMs = (timestamp-_counter)*FIXED_TIMESTEP_S*1000;
@@ -695,7 +665,7 @@ netdata GameScene::packState(Uint64 timestamp){
 //            }
         }
         
-        for(size_t i = 0; i < 20; i++){
+        for(size_t i = 0; i < velQueue.size(); i++){
             Uint32 id = velQueue[i];
             
             if(!list.count(id)){
@@ -999,14 +969,6 @@ void GameScene::processData(const std::string source,
 #if USING_PHYSICS
 void GameScene::preUpdate(float dt) {
     _input.update(dt);
-    
-    if(_input.getFirePower()>0.f){
-        _chargeBar->setVisible(true);
-        _chargeBar->setProgress(_input.getFirePower());
-    }
-    else{
-        _chargeBar->setVisible(false);
-    }
 
     // Process the toggled key commands
     if (_input.didDebug()) { setDebug(!isDebug()); }
@@ -1018,10 +980,6 @@ void GameScene::preUpdate(float dt) {
         Application::get()->quit();
     }
     
-    if (_input.didFire()) {
-        queueNetdata(packFire(_counter+INPUT_DELAY));
-    }
-    
     if (!_objQueue.empty()){
         queueNetdata(packState(_counter));
     }
@@ -1029,11 +987,31 @@ void GameScene::preUpdate(float dt) {
     for (std::vector<int>& v: _collisionMap){
         v.clear();
     }
+
+    // Move an object if touched
+    if (_input.didSelect()) {
+        // Transform from screen to physics coords
+        auto pos = _input.getSelection();
+        pos = _worldnode->screenToNodeCoords(pos);
+
+        // Place the cross hair
+        _selector->setPosition(pos / _scale);
+        _crosshair->setPosition(pos);
+        _crosshair->setVisible(true);
+
+        // Attempt to select an obstacle at the current position
+        if (!_selector->isSelected()) {
+            _selector->select();
+        }
+    }
+    else {
+        if (_selector->isSelected()) {
+            _selector->deselect();
+        }
+        _crosshair->setVisible(false);
+    }
     
     float turnRate = _isHost ? DEFAULT_TURN_RATE : -DEFAULT_TURN_RATE;
-    auto cannon = _isHost ? _cannon1 : _cannon2;
-    //cannon->setAngularVelocity(_input.getVertical() * turnRate);
-    cannon->setAngle(_input.getVertical() * turnRate + cannon->getAngle());
 }
 
 void GameScene::postUpdate(float dt) {
@@ -1041,15 +1019,8 @@ void GameScene::postUpdate(float dt) {
 }
 
 void GameScene::fixedUpdate() {
-    queueNetdata(packCannon(_counter));
     updateNet();
     processCache();
-    if(_counter == 100 && _isHost){
-        queueNetdata(packFire(_counter+INPUT_DELAY,1.0f));
-    }
-    if(_counter == 200 && !_isHost){
-        queueNetdata(packFire(_counter+INPUT_DELAY,1.0f));
-    }
     _world->update(FIXED_TIMESTEP_S);
     _itpr.fixedUpdate();
     if(LOG_POS)

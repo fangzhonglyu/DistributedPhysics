@@ -35,6 +35,7 @@
 #include "NetworkData.h"
 #include "RDNetwork.h"
 #include "Interpolator.h"
+#include "RGRagdollModel.h"
 /**
  * This class is the primary gameplay constroller for the demo.
  *
@@ -49,7 +50,7 @@ protected:
     
     // CONTROLLERS
     /** Controller for abstracting out input across multiple platforms */
-    RocketInput _input;
+    RagdollInput _input;
     
     // VIEW
     /** Reference to the physics root of the scene graph */
@@ -121,6 +122,14 @@ protected:
     Interpolator _itpr;
     
     std::shared_ptr<cugl::physics2::BoxObstacle> _red;
+
+    // Physics objects for the game
+    /** Reference to the ragdoll model */
+    std::shared_ptr<RagdollModel> _ragdoll;
+    /** Selector to allow mouse control of the ragdoll */
+    std::shared_ptr<cugl::physics2::ObstacleSelector> _selector;
+    /** The node referencing the crosshair */
+    std::shared_ptr<cugl::scene2::PolygonNode> _crosshair;
     
 #pragma mark Internal Object Management
     
