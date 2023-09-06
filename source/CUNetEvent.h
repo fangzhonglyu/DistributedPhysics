@@ -45,11 +45,11 @@ public:
      */
     virtual void deserialize(const std::vector<std::byte>& data);
     
-    Uint64 getEventTimeStamp(){ return _eventTimeStamp; }
+    Uint64 getEventTimeStamp() const { return _eventTimeStamp; }
     
-    Uint64 getReceiveTimeStamp(){ return _receiveTimeStamp; }
+    Uint64 getReceiveTimeStamp() const { return _receiveTimeStamp; }
     
-    const std::string getSourceId(){ return _sourceID; }
+    const std::string getSourceId() const { return _sourceID; }
     
 //============================================================
 // Reserved for the NetEventController. DO NOT MANUALLY SET.
