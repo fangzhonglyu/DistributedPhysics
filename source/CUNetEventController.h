@@ -2,6 +2,8 @@
 //  CUNetEventController.h
 //  Networked Physics Library
 //
+//  The header for a general network controllers for multiplayer physics based game
+//
 //  Created by Barry Lyu on 9/5/23.
 //
 
@@ -20,27 +22,47 @@ protected:
     std::unordered_map<std::type_index, Uint8> _eventTypeMap;
     std::vector<std::shared_ptr<NetEvent>> _eventTypeVector;
     std::shared_ptr<cugl::net::NetcodeConnection> _network;
+    Application* _appRef;
+    
+    Uint64 _startGameTimeStamp;
 
-    NetEvent& unwrap(const std::vector<std::byte>& data,std::string source);
+    std::shared_ptr<NetEvent> unwrap(const std::vector<std::byte>& data,std::string source);
 
-    const std::vector<std::byte>& wrap(NetEvent& e);
+    const std::vector<std::byte>& wrap(std::shared_ptr<NetEvent>& e);
+    
+    void processReceivedData();
+    
+    void sendQueuedOutData();
+    
+    Uint64 getGameTick() {
+        _appRef->getUpdateCounter() - _startGameTimeStamp;
+    }
 
     Uint8 getType(const NetEvent& e) {
         return _eventTypeMap.at(std::type_index(typeid(e)));
     }
 
-    bool operator()(NetEvent const& data1, NetEvent const& data2) {
-        if (getType(data1) != getType(data2)) {
-            return getType(data1) < getType(data2);
+    bool operator()(std::shared_ptr<NetEvent> const& event1, std::shared_ptr<NetEvent> const& event2) {
+        if (getType(*event1) != getType(*event2)) {
+            return getType(*event1) < getType(*event1);
         }
-        return data1.getEventTimeStamp() > data2.getEventTimeStamp();
+        return event1->getEventTimeStamp() > event2->getEventTimeStamp();
     }
 
-    std::priority_queue<NetEvent, std::vector<NetEvent>, NetEventController> _inEventQueue;
-    std::priority_queue<NetEvent, std::vector<NetEvent>, NetEventController> _outEventQueue;
+    std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventController> _inEventQueue;
+    std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventController> _outEventQueue;
 
 public:
-    NetEventController(void) { }
+    NetEventController(void) {};
+    
+    static std::shared_ptr<NetEventController> alloc(){
+        std::shared_ptr<NetEventController> result = std::make_shared<NetEventController>();
+        return (result->init() ? result : nullptr);
+    }
+    
+    bool init();
+    
+    void startGame();
 
     void updateNet();
 
@@ -51,9 +73,9 @@ public:
         _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _eventTypeVector.size() - 1));
     }
 
-    bool isInEmpty();
+    bool isInAvailable();
 
-    NetEvent& popInEvent();
+    std::shared_ptr<NetEvent>& popInEvent();
 
     void pushOutEvent(const NetEvent& event);
 };
