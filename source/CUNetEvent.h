@@ -39,7 +39,7 @@ private:
     friend class NetEventController;
     
 public:
-
+    virtual std::shared_ptr<NetEvent> clone();
     /**
      * Serialize any paramater that the event contains to a vector of bytes.
      */

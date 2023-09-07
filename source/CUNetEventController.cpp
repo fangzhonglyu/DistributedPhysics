@@ -12,14 +12,14 @@
 #define MAX_OUT_BYTES 100000
 
 NetEventController::NetEventController() {
-	attachEventType(std::type_index(typeid(PhysSyncEvent)));
+	attachEventType<PhysSyncEvent>();
 }
 
 void NetEventController::updateNet() {
 	if (_network) {
 		_network->receive([this](const std::string source,
 			const std::vector<std::byte>& data) {
-				_inEventQueue.push(unwrap(data));
+				_inEventQueue.push(unwrap(data,source));
 			});
 		//checkConnection();
 		int msgCount = 0;
@@ -40,11 +40,6 @@ void NetEventController::updateNet() {
 	}
 }
 
-void NetEventController::attachEventType(const std::type_index& eventType) {
-	_eventTypeVector.push_back(eventType);
-	_eventTypeMap.insert(std::make_pair(eventType, _eventTypeVector.size() - 1));
-}
-
 bool NetEventController::isInEmpty() {
 	return _inEventQueue.empty();
 }
@@ -58,4 +53,18 @@ NetEvent& NetEventController::popInEvent() {
 
 void NetEventController::pushOutEvent(const NetEvent& event) {
 	_outEventQueue.push(event);
+}
+
+NetEvent& NetEventController::unwrap(const std::vector<std::byte>& data, std::string source) {
+	CUAssertLog(data.size()>0 & (Uint8)data[0] < _eventTypeVector.size(), "Invalid event type");
+	std::shared_ptr<NetEvent> e = _eventTypeVector[(Uint8)data[0]]->clone();
+	e->setMetaData(0, 0, source);
+}
+
+const std::vector<std::byte>& NetEventController::wrap(NetEvent& e) {
+	std::vector<std::byte> data;
+	data.push_back((std::byte)getType(e));
+	auto wrapped = e.serialize();
+	data.insert(data.end(), wrapped.begin(), wrapped.end());
+	return data;
 }

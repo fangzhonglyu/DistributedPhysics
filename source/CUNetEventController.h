@@ -11,16 +11,17 @@
 #include <unordered_map>
 #include <typeindex>
 #include <vector>
+#include <concepts>
 #include "CUNetEvent.h"
 
 class NetEventController {
 
 protected:
     std::unordered_map<std::type_index, Uint8> _eventTypeMap;
-    std::vector<std::type_index> _eventTypeVector;
+    std::vector<std::shared_ptr<NetEvent>> _eventTypeVector;
     std::shared_ptr<cugl::net::NetcodeConnection> _network;
 
-    NetEvent& unwrap(const std::vector<std::byte>& data);
+    NetEvent& unwrap(const std::vector<std::byte>& data,std::string source);
 
     const std::vector<std::byte>& wrap(NetEvent& e);
 
@@ -43,7 +44,12 @@ public:
 
     void updateNet();
 
-    void attachEventType(const std::type_index& eventType);
+    //template that must be of type NetEvent
+    template <typename T>
+    void attachEventType() {
+        _eventTypeVector.push_back(std::make_shared<T>());
+        _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _eventTypeVector.size() - 1));
+    }
 
     bool isInEmpty();
 
