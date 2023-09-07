@@ -29,6 +29,14 @@ private:
     Uint64 _receiveTimeStamp;
     /** The ID of the sender. */
     std::string _sourceID;
+
+    virtual void setMetaData(Uint64 eventTimeStamp, Uint64 receiveTimeStamp, const std::string sourceID) final {
+        _eventTimeStamp = eventTimeStamp;
+        _receiveTimeStamp = receiveTimeStamp;
+        _sourceID = sourceID;
+    }
+    
+    friend class NetEventController;
     
 public:
 
@@ -49,18 +57,7 @@ public:
     
     Uint64 getReceiveTimeStamp() const { return _receiveTimeStamp; }
     
-    const std::string getSourceId() const { return _sourceID; }
-    
-//============================================================
-// Reserved for the NetEventController. DO NOT MANUALLY SET.
-    virtual void setMetaData(Uint64 eventTimeStamp, Uint64 receiveTimeStamp, const std::string sourceID) final {
-        _eventTimeStamp = eventTimeStamp;
-        _receiveTimeStamp = receiveTimeStamp;
-        _sourceID = sourceID;
-    }
-//============================================================
-    
-    
+    const std::string getSourceId() const { return _sourceID; }   
 };
 
 
