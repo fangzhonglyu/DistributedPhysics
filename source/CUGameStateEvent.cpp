@@ -40,6 +40,8 @@ public:
         return ptr;
 	}
 
+    GameStateEvent() {}
+
     GameStateEvent(Type t) {
         _type = t;
 	}
@@ -72,6 +74,7 @@ public:
 			    break;
         }
         data.push_back(std::byte(GAME_START));
+        return data;
     }
 
     /**
