@@ -6,8 +6,6 @@
 //
 
 #include "CUNetEventController.h"
-#include "CUPhysSyncEvent.cpp"
-#include "CUGameStateEvent.cpp"
 #include "CULWSerializer.h"
 
 #define MAX_OUT_MSG 10
@@ -73,18 +71,17 @@ bool NetEventController::isInAvailable() {
     if ( _inEventQueue.empty() )
         return false;
     std::shared_ptr<NetEvent> top = _inEventQueue.top();
-    if(top->_eventTimeStamp <= _appRef->getUpdateCount()-_startGameTimeStamp)
-	return _inEventQueue.empty();
+    return top->_eventTimeStamp <= _appRef->getUpdateCount()-_startGameTimeStamp;
 }
 
 
-std::shared_ptr<NetEvent>& NetEventController::popInEvent() {
+std::shared_ptr<NetEvent> NetEventController::popInEvent() {
 	auto e = _inEventQueue.top();
 	_inEventQueue.pop();
 	return e;
 }
 
-void NetEventController::pushOutEvent(std::shared_ptr<NetEvent>& e) {
+void NetEventController::pushOutEvent(const std::shared_ptr<NetEvent>& e) {
 	_outEventQueue.push(e);
 }
 
@@ -101,7 +98,7 @@ std::shared_ptr<NetEvent> NetEventController::unwrap(const std::vector<std::byte
     return e;
 }
 
-const std::vector<std::byte>& NetEventController::wrap(std::shared_ptr<NetEvent>& e) {
+const std::vector<std::byte>& NetEventController::wrap(const std::shared_ptr<NetEvent>& e) {
     LWSerializer serializer;
     serializer.writeByte((std::byte)getType(*e));
     serializer.writeUint64(_appRef->getUpdateCount()-_startGameTimeStamp);

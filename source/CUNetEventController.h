@@ -61,14 +61,14 @@ protected:
 
     std::shared_ptr<NetEvent> unwrap(const std::vector<std::byte>& data,std::string source);
 
-    const std::vector<std::byte>& wrap(std::shared_ptr<NetEvent>& e);
+    const std::vector<std::byte>& wrap(const std::shared_ptr<NetEvent>& e);
     
     void processReceivedData();
     
     void sendQueuedOutData();
     
-    Uint64 getGameTick() {
-        _appRef->getUpdateCount() - _startGameTimeStamp;
+    Uint64 getGameTick() const {
+        return _appRef->getUpdateCount() - _startGameTimeStamp;
     }
 
     Uint8 getType(const NetEvent& e) {
@@ -127,9 +127,9 @@ public:
 
     bool isInAvailable();
 
-    std::shared_ptr<NetEvent>& popInEvent();
+    std::shared_ptr<NetEvent> popInEvent();
 
-    void pushOutEvent(std::shared_ptr<NetEvent>& e);
+    void pushOutEvent(const std::shared_ptr<NetEvent>& e);
 };
 
 #endif /* __CU_NET_EVENT_CONTROLLER_H__ */

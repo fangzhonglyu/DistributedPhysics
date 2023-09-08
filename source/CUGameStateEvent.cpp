@@ -6,7 +6,6 @@
 //
 
 #include "CUNetEvent.h"
-#include <unordered_set>
 
 #define GAME_START_FLAG  100
 #define GAME_RESET_FLAG  101
@@ -30,7 +29,7 @@ protected:
 
 
 public:
-    std::shared_ptr<NetEvent> clone() {
+    std::shared_ptr<NetEvent> clone() override {
         return std::make_shared<GameStateEvent>();
     }
 
