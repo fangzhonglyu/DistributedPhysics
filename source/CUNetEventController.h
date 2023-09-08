@@ -17,13 +17,46 @@
 #include "CUNetEvent.h"
 
 class NetEventController {
+public:
+    enum Status {
+        /** No connection requested */
+        IDLE,
+        /** Connecting to server */
+        CONNECTING,
+        /** Connected to server */
+        CONNECTED,
+        /** Game is in progress */
+        INGAME,
+        /** Error in connection */
+        NETERROR
+    };
 
 protected:
     std::unordered_map<std::type_index, Uint8> _eventTypeMap;
     std::vector<std::shared_ptr<NetEvent>> _eventTypeVector;
+
+    /** The asset manager for the controller. */
+    std::shared_ptr<cugl::AssetManager> _assets;
+
+    /** The network configuration */
+    cugl::net::NetcodeConfig _config;
+
+    /** The network connection */
     std::shared_ptr<cugl::net::NetcodeConnection> _network;
-    Application* _appRef;
+
+    /** The network status */
+    Status _status;
     
+    /** The room id */
+    std::string _roomid;
+
+    /** Whether this device is host */
+    bool _isHost;
+
+    /** Reference to the App */
+    Application* _appRef;
+
+    /** The App fixed-time stamp when the game starts */
     Uint64 _startGameTimeStamp;
 
     std::shared_ptr<NetEvent> unwrap(const std::vector<std::byte>& data,std::string source);
@@ -35,32 +68,49 @@ protected:
     void sendQueuedOutData();
     
     Uint64 getGameTick() {
-        _appRef->getUpdateCounter() - _startGameTimeStamp;
+        _appRef->getUpdateCount() - _startGameTimeStamp;
     }
 
     Uint8 getType(const NetEvent& e) {
         return _eventTypeMap.at(std::type_index(typeid(e)));
     }
 
-    bool operator()(std::shared_ptr<NetEvent> const& event1, std::shared_ptr<NetEvent> const& event2) {
-        if (getType(*event1) != getType(*event2)) {
-            return getType(*event1) < getType(*event1);
-        }
-        return event1->getEventTimeStamp() > event2->getEventTimeStamp();
-    }
+    struct NetEventCompare {
+		bool operator()(std::shared_ptr<NetEvent> const& event1, std::shared_ptr<NetEvent> const& event2) {
+			return event1->getEventTimeStamp() > event2->getEventTimeStamp();
+		}
+	};
 
-    std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventController> _inEventQueue;
-    std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventController> _outEventQueue;
+    std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventCompare> _inEventQueue;
+    std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventCompare> _outEventQueue;
 
 public:
-    NetEventController(void) {};
+    NetEventController(void) { };
     
-    static std::shared_ptr<NetEventController> alloc(){
-        std::shared_ptr<NetEventController> result = std::make_shared<NetEventController>();
-        return (result->init() ? result : nullptr);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets);
+
+    static std::shared_ptr<NetEventController> alloc(const std::shared_ptr<cugl::AssetManager>& assets) {
+		std::shared_ptr<NetEventController> result = std::make_shared<NetEventController>();
+		return (result->init(assets) ? result : nullptr);
+	}
+
+    bool connectAsHost();
+
+    bool connectAsClient(std::string roomID);
+
+    void disconnect();
+
+    std::string getRoomID() const {
+        return _roomid;
     }
-    
-    bool init();
+
+    bool getIsHost() const {
+        return _isHost;
+    }
+
+    Status getStatus() const {
+        return _status;
+    }
     
     void startGame();
 
@@ -69,15 +119,17 @@ public:
     //template that must be of type NetEvent
     template <typename T>
     void attachEventType() {
-        _eventTypeVector.push_back(std::make_shared<T>());
-        _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _eventTypeVector.size() - 1));
+        if (!_eventTypeMap.count(std::type_index(typeid(T)))) {
+            _eventTypeVector.push_back(std::make_shared<T>());
+            _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _eventTypeVector.size() - 1));
+        }
     }
 
     bool isInAvailable();
 
     std::shared_ptr<NetEvent>& popInEvent();
 
-    void pushOutEvent(const NetEvent& event);
+    void pushOutEvent(std::shared_ptr<NetEvent>& e);
 };
 
 #endif /* __CU_NET_EVENT_CONTROLLER_H__ */

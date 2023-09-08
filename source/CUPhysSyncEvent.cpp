@@ -58,6 +58,10 @@ public:
         param.vAngular = obj->getAngularVelocity();
         _syncList.push_back(param);
     }
+
+    std::shared_ptr<NetEvent> clone() {
+		return std::make_shared<PhysSyncEvent>();
+	}
     
     /**
      * This method takes the current list of snapshots and serializes them to a byte vector.

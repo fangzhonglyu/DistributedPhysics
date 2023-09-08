@@ -7,15 +7,34 @@
 
 #include "CUNetEventController.h"
 #include "CUPhysSyncEvent.cpp"
+#include "CUGameStateEvent.cpp"
 #include "CULWSerializer.h"
 
 #define MAX_OUT_MSG 10
 #define MAX_OUT_BYTES 100000
 #define MIN_MSG_LENGTH sizeof(std::byte)+sizeof(Uint64)
 
-bool NetEventController::init() {
+#define GAME_START_EVENT
+
+bool NetEventController::init(const std::shared_ptr<cugl::AssetManager>& assets) {
+    // Attach the primitive event types for deserialization
 	attachEventType<PhysSyncEvent>();
+    attachEventType<GameStateEvent>();
+
+    // Configure the NetcodeConnection
+    _assets = assets;
+    auto json = _assets->get<JsonValue>("server");
+    _config.set(json);
+    _status = Status::IDLE;
     return true;
+}
+
+void NetEventController::startGame() {
+    if (_isHost) {
+        pushOutEvent(GameStateEvent::alloc(GameStateEvent::GAME_START));
+        sendQueuedOutData();
+    }
+    _startGameTimeStamp = _appRef->getUpdateCount();
 }
 
 void NetEventController::processReceivedData(){
@@ -48,7 +67,6 @@ void NetEventController::updateNet() {
         processReceivedData();
         sendQueuedOutData();
     }
-    
 }
 
 bool NetEventController::isInAvailable() {
@@ -66,8 +84,8 @@ std::shared_ptr<NetEvent>& NetEventController::popInEvent() {
 	return e;
 }
 
-void NetEventController::pushOutEvent(const NetEvent& event) {
-	_outEventQueue.push(event);
+void NetEventController::pushOutEvent(std::shared_ptr<NetEvent>& e) {
+	_outEventQueue.push(e);
 }
 
 std::shared_ptr<NetEvent> NetEventController::unwrap(const std::vector<std::byte>& data, std::string source) {
