@@ -145,7 +145,7 @@ void RagdollInput::update(float dt) {
     Keyboard* keys = Input::get<Keyboard>();
 
     // Map "keyboard" events to the current frame boundary
-    _keyReset = keys->keyPressed(RESET_KEY);
+    _keyReset = keys->keyDown(RESET_KEY);
     _keyDebug = keys->keyPressed(DEBUG_KEY);
     _keyExit = keys->keyPressed(EXIT_KEY);
 #endif
@@ -156,9 +156,6 @@ void RagdollInput::update(float dt) {
 
     // If it does not support keyboard, we must reset "virtual" keyboard
 #ifdef CU_TOUCH_SCREEN
-    _keyExit = false;
-    _keyReset = false;
-    _keyDebug = false;
 #endif
 }
 
@@ -294,5 +291,11 @@ void RagdollInput::mouseDraggedCB(const cugl::MouseEvent& event, const Vec2& pre
  */
 void RagdollInput::touchMoved(const cugl::Vec2& pos) {
     _dtouch.set(pos);
+}
+
+bool RagdollInput::JDestroyDown() {
+    Keyboard* keys = Input::get<Keyboard>();
+    // Map "keyboard" events to the current frame boundary
+    return keys->keyDown(KeyCode::SPACE);
 }
 

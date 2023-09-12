@@ -172,6 +172,8 @@ public:
      */
     bool didSelect() const { return _select; }
 
+    bool JDestroyDown();
+
     /**
      * Returns the location (in world space) of the selection.
      *

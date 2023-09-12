@@ -64,16 +64,8 @@ float BUBB_OFF[] = { 0.55f,  1.9f };
  *
  * @return  true if the obstacle is initialized properly, false otherwise.
  */
-bool RagdollModel::init(const Vec2& pos, float scale) {
-    Obstacle::init(pos);
-
-    std::string name("ragdoll");
-    setName(name);
-    
-	_node = nullptr;
-	_centroid  = nullptr;
-    _drawscale = scale;
-
+bool RagdollModel::init(float scale) {
+	_drawscale = scale;
 	return true;
 }
 
@@ -86,6 +78,7 @@ bool RagdollModel::init(const Vec2& pos, float scale) {
 void RagdollModel::dispose() {
     _node = nullptr;
     _bodies.clear();
+	_joints.clear();
 }
 
 
@@ -102,7 +95,7 @@ void RagdollModel::dispose() {
  *
  * @return true if the body parts were successfully created
  */
-bool RagdollModel::buildParts(const std::shared_ptr<AssetManager>& assets) {
+bool RagdollModel::buildParts(const std::shared_ptr<AssetManager>& assets, Vec2 pos) {
     CUAssertLog(_bodies.empty(), "Bodies are already initialized");
    
     // Get the images from the asset manager
@@ -123,10 +116,11 @@ bool RagdollModel::buildParts(const std::shared_ptr<AssetManager>& assets) {
     // Now make everything
     std::shared_ptr<physics2::BoxObstacle> part;
     
-    // TORSO
-    Vec2 pos = getPosition();
+    // TORSO;
     part = makePart(PART_BODY, PART_NONE, pos);
     part->setFixedRotation(true);
+
+	_base = part;
     
     // HEAD
     makePart(PART_HEAD, PART_BODY, Vec2(0, TORSO_OFFSET));
@@ -243,7 +237,6 @@ std::string RagdollModel::getPartName(int part) {
  * @param delta Timing values from parent loop
  */
 void RagdollModel::update(float delta) {
-    Obstacle::update(delta);
     if (_node != nullptr) {
       std::vector<std::shared_ptr<scene2::SceneNode>> children = _node->getChildren();
       int i = 0;
@@ -372,54 +365,7 @@ bool RagdollModel::createJoints(b2World& world) {
 
 	// Weld bubbler to the head.
 	b2WeldJointDef weldDef;
-
-	// Weld center of mass to torso
-	weldDef.bodyA = _bodies[PART_BODY]->getBody();
-	weldDef.bodyB = _body;
-	weldDef.localAnchorA.Set(0, 0);
-	weldDef.localAnchorB.Set(0, 0);
-	joint = world.CreateJoint(&weldDef);
-	_joints.push_back(joint);
-
 	return true;
-}
-
-/**
- * Create new fixtures for this body, defining the shape
- *
- * This method is typically undefined for complex objects.  However, it
- * is necessary if we want to weld the body to track the center of mass.
- * Joints without fixtures are undefined.
- */
-void RagdollModel::createFixtures() {
-	if (_body == nullptr) {
-		return;
-	}
-
-	releaseFixtures();
-
-	// Create the fixture for the center of mass
-	b2CircleShape shape;
-	shape.m_radius = CENTROID_RADIUS;
-	_fixture.shape = &shape;
-	_fixture.density = CENTROID_DENSITY;
-	_centroid = _body->CreateFixture(&_fixture);
-
-	markDirty(false);
-}
-
-/**
- * Release the fixtures for this body, reseting the shape
- *
- * This method is typically undefined for complex objects.  However, it
- * is necessary if we want to weld the body to track the center of mass.
- * Joints without fixtures are undefined.
- */
-void RagdollModel::releaseFixtures() {
-	if (_centroid != nullptr) {
-		_body->DestroyFixture(_centroid);
-		_centroid = nullptr;
-	}
 }
 
 #pragma mark -

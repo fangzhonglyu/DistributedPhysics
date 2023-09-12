@@ -478,8 +478,8 @@ void GameScene::populate(bool isInit) {
 #pragma mark : Ragdoll
     // Allocate the ragdoll and set its (empty) node. Its model handles creation of parts 
     // (both obstacles and nodes to be drawn) upon alllocation and setting the scene node.
-    _ragdoll = RagdollModel::alloc(DOLL_POS, _scale);
-    _ragdoll->buildParts(_assets);
+    _ragdoll = RagdollModel::alloc(_scale);
+    _ragdoll->buildParts(_assets,DOLL_POS);
 
     auto ragdollNode = scene2::SceneNode::alloc();
     // Add the ragdollNode to the world before calling setSceneNode, as noted in the documentation for the Ragdoll's method.
@@ -487,8 +487,6 @@ void GameScene::populate(bool isInit) {
     _ragdoll->setSceneNode(ragdollNode);
 
     _ragdoll->setDrawScale(_scale);
-    _ragdoll->setDebugColor(DYNAMIC_COLOR);
-    _ragdoll->setDebugScene(_debugnode);
     for(size_t i = 0; i < _ragdoll->getBodies().size(); i++) {
         auto obj = _ragdoll->getBodies()[i];
         _objQueue.push(_nextObj);
@@ -498,7 +496,7 @@ void GameScene::populate(bool isInit) {
         _collisionMap.push_back(std::vector<int>());
 	}
 
-    _world->addObstacle(_ragdoll);
+    _world->addJointSet(_ragdoll);
     
 
 #pragma mark: Mouse Cross Hair
@@ -737,10 +735,53 @@ netdata GameScene::packCannon(Uint64 timestamp){
     return data;
 }
 
+netdata GameScene::packJointDestroy(Uint64 timestamp, cugl::physics2::Obstacle* obs) {
+    netdata data;
+    data.timestamp = timestamp;
+    data.flag = JOINT_DESTROY_FLAG;
+    _serializer.reset();
+    Uint32 num = 0;
+    _serializer.writeUint32(0);
+    for (Uint32 i = 0; i < _world->getJoints().size(); i++) {
+        b2Joint* j = _world->getJoints()[i];
+        if (j != nullptr) {
+            if (j->GetBodyA() == obs->getBody() || j->GetBodyB() == obs->getBody()) {
+                _serializer.writeUint32(i);
+                num++;
+            }
+        }
+    }
+    _serializer.rewriteFirstUint32(num);
+    data.data = _serializer.serialize();
+    return data;
+}
+
 union {
     float f;
     uint32_t u;
 } f2u;
+
+void GameScene::processJointDestroy(netdata data) {
+	CUAssert(data.flag == JOINT_DESTROY_FLAG);
+    auto source = _assets->get<Sound>(COLLISION_SOUND);
+    if (!AudioEngine::get()->isActive("key")) {
+        AudioEngine::get()->play("key", source, false, source->getVolume());
+    }
+	_deserializer.reset();
+	_deserializer.receive(data.data);
+	Uint32 num = _deserializer.readUint32();
+    if (num > 0) {
+        if (!AudioEngine::get()->isActive("key")) {
+            AudioEngine::get()->play("key", source, false, source->getVolume());
+        }
+    }
+	for (Uint32 i = 0; i < num; i++) {
+		Uint32 id = _deserializer.readUint32();
+        if (_world->getJoints()[id] != nullptr) {
+            _world->SayGoodbye(_world->getJoints()[id]);
+        }
+	}
+}
 
 void GameScene::processFire(netdata data){
     
@@ -900,6 +941,9 @@ void GameScene::processCache(){
             case CANNON_FLAG:
                 processCannon(next);
                 break;
+            case JOINT_DESTROY_FLAG:
+				processJointDestroy(next);
+				break;
             default:
                 CULogError("unknown flag %u", next.flag);
                 break;
@@ -972,9 +1016,9 @@ void GameScene::preUpdate(float dt) {
 
     // Process the toggled key commands
     if (_input.didDebug()) { setDebug(!isDebug()); }
-    if (_input.didReset()) {
-        queueNetdata(packReset(_counter+INPUT_DELAY));
-    }
+    //if (_input.didReset()) {
+    //    queueNetdata(packReset(_counter+INPUT_DELAY));
+    //}
     if (_input.didExit()) {
         CULog("Shutting down");
         Application::get()->quit();
@@ -996,13 +1040,15 @@ void GameScene::preUpdate(float dt) {
 
         // Place the cross hair
         _selector->setPosition(pos / _scale);
+        if(_selector->getObstacle() != nullptr && _input.JDestroyDown())
+            queueNetdata(packJointDestroy(_counter, _selector->getObstacle()));
         _crosshair->setPosition(pos);
         _crosshair->setVisible(true);
-
         // Attempt to select an obstacle at the current position
         if (!_selector->isSelected()) {
             _selector->select();
         }
+
     }
     else {
         if (_selector->isSelected()) {
@@ -1010,12 +1056,17 @@ void GameScene::preUpdate(float dt) {
         }
         _crosshair->setVisible(false);
     }
+
+    /*if (_selector->isSelected()) {
+        queueNetdata(packJointDestroy(_counter, _selector->getObstacle()));
+    }*/
     
     float turnRate = _isHost ? DEFAULT_TURN_RATE : -DEFAULT_TURN_RATE;
 }
 
 void GameScene::postUpdate(float dt) {
     //Nothing to do now
+    _ragdoll->update(dt);
 }
 
 void GameScene::fixedUpdate() {
@@ -1114,21 +1165,7 @@ void GameScene::beforeSolve(b2Contact* contact, const b2Manifold* oldManifold) {
             speed = b2Dot(dv,worldManifold.normal);
         }
     }
-    
-    // Play a sound if above threshold
-    if (speed > SOUND_THRESHOLD) {
-        // These keys result in a low number of sounds.  Too many == distortion.
-        physics2::Obstacle* data1 = reinterpret_cast<physics2::Obstacle*>(body1->GetUserData().pointer);
-        physics2::Obstacle* data2 = reinterpret_cast<physics2::Obstacle*>(body2->GetUserData().pointer);
 
-        if (data1 != nullptr && data2 != nullptr) {
-            std::string key = (data1->getName()+data2->getName());
-            auto source = _assets->get<Sound>(COLLISION_SOUND);
-            if (!AudioEngine::get()->isActive(key)) {
-                AudioEngine::get()->play(key, source, false, source->getVolume());
-            }
-        }
-    }
 }
 
 /**

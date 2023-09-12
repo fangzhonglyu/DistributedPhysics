@@ -19,6 +19,7 @@ using namespace cugl;
 #define STATE_SYNC_FLAG 102
 #define FIRE_INPUT_FLAG 103
 #define RESET_FLAG 104
+#define JOINT_DESTROY_FLAG 105
 
 
 typedef struct {

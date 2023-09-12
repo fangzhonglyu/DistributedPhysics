@@ -119,7 +119,7 @@ using namespace cugl;
  *
  * For the construction, see the ragdoll diagram above, with the position offsets.
  */
-class RagdollModel : public cugl::physics2::ComplexObstacle {
+class RagdollModel : public cugl::physics2::JointSet {
 private:
     /** This macro disables the copy constructor (not allowed on scene graphs) */
     CU_DISALLOW_COPY_AND_ASSIGN(RagdollModel);
@@ -172,7 +172,7 @@ public:
 	 * NEVER USE A CONSTRUCTOR WITH NEW. If you want to allocate a model on
 	 * the heap, use one of the static constructors instead.
 	 */
-	RagdollModel(void) : ComplexObstacle() { }
+	RagdollModel(void) : JointSet() { }
 
     /**
      * Destroys this Ragdoll, releasing all resources.
@@ -199,23 +199,8 @@ public:
      *
      * @return  true if the obstacle is initialized properly, false otherwise.
      */
-    virtual bool init() override { return init(cugl::Vec2::ZERO, 1.0f); }
+    virtual bool init() { return init(1.0f); }
     
-    /**
-     * Initializes a new Ragdoll with the given position
-     *
-     * The Ragdoll is scaled so that 1 pixel = 1 Box2d unit
-     *
-     * The scene graph is completely decoupled from the physics system.
-     * The node does not have to be the same size as the physics body. We
-     * only guarantee that the scene graph node is positioned correctly
-     * according to the drawing scale.
-     *
-     * @param pos   Initial position in world coordinates
-     *
-     * @return  true if the obstacle is initialized properly, false otherwise.
-     */
-    virtual bool init(const cugl::Vec2& pos) { return init(pos,1.0f); }
     
     /**
      * Initializes a new Ragdoll with the given position and scale
@@ -230,27 +215,11 @@ public:
 	 *
      * @return  true if the obstacle is initialized properly, false otherwise.
      */
-	bool init(const cugl::Vec2& pos, float scale);
+	bool init(float scale);
 
     
 #pragma mark -
 #pragma mark Static Constructors
-    /**
-     * Returns a newly allocated Ragdoll at the origin.
-     *
-     * The Ragdoll is scaled so that 1 pixel = 1 Box2d unit
-     *
-     * The scene graph is completely decoupled from the physics system.
-     * The node does not have to be the same size as the physics body. We
-     * only guarantee that the scene graph node is positioned correctly
-     * according to the drawing scale.
-     *
-     * @return a newly allocated Ragdoll at the origin.
-     */
-    static std::shared_ptr<RagdollModel> alloc() {
-        std::shared_ptr<RagdollModel> result = std::make_shared<RagdollModel>();
-        return (result->init() ? result : nullptr);
-    }
     
     /**
      * Returns a newly allocated Ragdoll with the given position
@@ -266,9 +235,9 @@ public:
      *
      * @return a newly allocated Ragdoll with the given position
      */
-    static std::shared_ptr<RagdollModel> alloc(const cugl::Vec2& pos) {
+    static std::shared_ptr<RagdollModel> alloc() {
         std::shared_ptr<RagdollModel> result = std::make_shared<RagdollModel>();
-        return (result->init(pos, 1.0f) ? result : nullptr);
+        return (result->init(1.0f) ? result : nullptr);
     }
 
 	/**
@@ -284,9 +253,9 @@ public:
 	 *
 	 * @return a newly allocated Ragdoll with the given position
 	 */
-    static std::shared_ptr<RagdollModel> alloc(const cugl::Vec2& pos, float scale) {
+    static std::shared_ptr<RagdollModel> alloc(float scale) {
 		std::shared_ptr<RagdollModel> result = std::make_shared<RagdollModel>();
-		return (result->init(pos, scale) ? result : nullptr);
+		return (result->init(scale) ? result : nullptr);
 	}
     
 
@@ -302,24 +271,6 @@ public:
 	 * @return true if object allocation succeeded
 	 */
 	bool createJoints(b2World& world) override;
-
-	/**
-	 * Create new fixtures for this body, defining the shape
-	 *
-	 * This method is typically undefined for complex objects.  While they
-	 * need a root body, they rarely need a root shape.  However, we provide
-	 * this method for maximum flexibility.
-	 */
-	virtual void createFixtures() override;
-
-	/**
-	 * Release the fixtures for this body, reseting the shape
-	 *
-	 * This method is typically undefined for complex objects.  While they
-	 * need a root body, they rarely need a root shape.  However, we provide
-	 * this method for maximum flexibility.
-	 */
-	virtual void releaseFixtures() override;
     
     /**
      * Creates the individual body parts for this ragdoll
@@ -332,7 +283,7 @@ public:
      *
      * @return true if the body parts were successfully created
      */
-    bool buildParts(const std::shared_ptr<cugl::AssetManager>& assets);
+    bool buildParts(const std::shared_ptr<cugl::AssetManager>& assets, Vec2 pos);
     
     
 #pragma mark -
@@ -421,7 +372,7 @@ public:
      *
      * @param delta Timing values from parent loop
      */
-    virtual void update(float delta) override;
+    virtual void update(float delta);
 };
 
 #endif /* _RG_RAGDOLL_MODEL_H */

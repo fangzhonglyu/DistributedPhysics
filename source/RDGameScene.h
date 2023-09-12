@@ -368,12 +368,16 @@ public:
     
     netdata packCannon(Uint64 timestamp);
     
+    netdata packJointDestroy(Uint64 timestamp,cugl::physics2::Obstacle* obs);
+    
     void processCannon(netdata data);
     
     void processFire(netdata data);
     
     void processState(netdata data);
     
+    void processJointDestroy(netdata data);
+
     void processCache();
     
 #pragma mark -
