@@ -90,7 +90,7 @@ std::shared_ptr<NetEvent> NetEventController::unwrap(const std::vector<std::byte
     LWDeserializer deserializer;
     deserializer.receive(data);
     Uint8 eventType = (Uint8)deserializer.readByte();
-    std::shared_ptr<NetEvent> e = _eventTypeVector[eventType]->clone();
+    std::shared_ptr<NetEvent> e = _eventTypeVector[eventType]->alloc();
     Uint64 eventTimeStamp = deserializer.readUint64();
     Uint64 receiveTimeStamp =  _appRef->getUpdateCount()-_startGameTimeStamp;
 	e->setMetaData(eventTimeStamp, receiveTimeStamp, source);

@@ -39,7 +39,7 @@ private:
     friend class NetEventController;
     
 public:
-    virtual std::shared_ptr<NetEvent> clone() {
+    static std::shared_ptr<NetEvent> alloc() {
         return std::make_shared<NetEvent>();
     };
     /**
@@ -86,7 +86,7 @@ protected:
 
 
 public:
-    std::shared_ptr<NetEvent> clone() override {
+    static std::shared_ptr<NetEvent> alloc() {
         return std::make_shared<GameStateEvent>();
     }
 
@@ -205,7 +205,7 @@ public:
         _syncList.push_back(param);
     }
 
-    std::shared_ptr<NetEvent> clone() override {
+    static std::shared_ptr<NetEvent> alloc() {
         return std::make_shared<PhysSyncEvent>();
     }
     
