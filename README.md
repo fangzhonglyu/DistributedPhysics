@@ -1,7 +1,18 @@
-# Rocket Demo
+# CUGL Distributed Physics Simulations Library
+by Barry Lyu, under the guidance of Professor Walker M. White. 
 
-This demo should be familar to students who have taken 3152.  It is the first part of the physics lab from that class, rewritten in CUGL.  We will have the ragdoll demo later.
+This repository contains the research codebase and preliminary API to be integrated into CUGL in the future. 
 
-Once again, you control the game differently on desktop and mobile.  On desktop, you control the ship entirely with the arrow keys.  On mobile, you tap the screen to get the rear thrusters to fire.  However, the left and right thrusters are controlled by the accelerometer.
+This demo is based on the Physics Demo for the Cornell University Game Library (CUGL)
 
-Unlike the other demos, this demo is not so great for different aspect ratios.  It is specifically designed for a phone resolution.  You will see a lot of empty space at the top on more square displays like a tablet. While we have tools to rearrange scene graphs to fit different screens, physics bodies are a little more fragile.  If you would like to make a more robust (for arbitrary aspect ratios) version of this demo, you are welcome to do so.
+The purpose of this library is to provide cross-platform, real-time, and interactive physics simulation that runs on different devices. Unlike traditional host-client models, this synchronization model does not need distinct servers, and has better simulation fidelity.
+
+Features of the Distributed Physics Library include:
+- Discrete physics simulations based on ticks
+- Automatic object dynamics synchronization
+- Physics body/Joint creation/deletion synchronization
+- Fully customizable cross-device error correction scheme, with stock linear and PID interpolations.
+- Dynamic transfer of authority.
+- Built-in latency testing framework.
+- Extensible event-based system for deterministic message communication.
+- Network manager for game lobby creation and Complete API encapsulation for the networking layers.
