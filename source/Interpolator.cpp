@@ -17,9 +17,9 @@ void Interpolator::processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& ev
     const std::vector<ObjParam>& params = event->getSyncList();
     for (auto it = params.begin(); it != params.end(); it++) {
         ObjParam param = (*it);
-        CUAssertLog(_world->_idToObj.count(param.objId), "Invalid PhysSyncEvent, obj not found.");
+        CUAssertLog(_world->getIdToObj().count(param.objId), "Invalid PhysSyncEvent, obj not found.");
             
-        auto obj = _world->_idToObj.at(param.objId);  
+        auto obj = _world->getIdToObj().at(param.objId);
         float x = param.x;            
         float y = param.y;            
         float angle = param.angle; 
