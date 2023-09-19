@@ -8,11 +8,11 @@
 #include "CUNetEventController.h"
 #include "CULWSerializer.h"
 
-#define MAX_OUT_MSG 10
+#define MAX_OUT_MSG 100
 #define MAX_OUT_BYTES 100000
 #define MIN_MSG_LENGTH sizeof(std::byte)+sizeof(Uint64)
 
-#define GAME_START_EVENT
+using namespace cugl::net;
 
 bool NetEventController::init(const std::shared_ptr<cugl::AssetManager>& assets) {
     // Attach the primitive event types for deserialization
@@ -24,21 +24,101 @@ bool NetEventController::init(const std::shared_ptr<cugl::AssetManager>& assets)
     auto json = _assets->get<JsonValue>("server");
     _config.set(json);
     _status = Status::IDLE;
+    _appRef = Application::get();
     return true;
 }
 
 void NetEventController::startGame() {
-    if (_isHost) {
+    if (_isHost && _status == Status::CONNECTED) {
+        auto players = _network->getPlayers();
+        Uint8 shortUID = 0;
+        for (auto it = players.begin(); it != players.end(); it++) {
+            _network->sendTo((*it), wrap(GameStateEvent::alloc(GameStateEvent::GAME_START,shortUID++)));
+        }
         pushOutEvent(GameStateEvent::alloc(GameStateEvent::GAME_START));
         sendQueuedOutData();
     }
     _startGameTimeStamp = _appRef->getUpdateCount();
 }
 
+bool NetEventController::connectAsHost() {
+    if (_status == Status::NETERROR) {
+        disconnect();
+    }
+
+    _isHost = true;
+    if (_status == Status::IDLE) {
+        _status = Status::CONNECTING;
+        _network = NetcodeConnection::alloc(_config);
+        _network->open();
+    }
+    return checkConnection();
+}
+
+bool NetEventController::connectAsClient(std::string roomid) {
+    if (_status == Status::NETERROR) {
+        disconnect();
+    }
+
+    _isHost = false;
+    if (_status == Status::IDLE) {
+        _status = Status::CONNECTING;
+        _network = NetcodeConnection::alloc(_config, roomid);
+        _network->open();
+    }
+    _roomid = roomid;
+    return checkConnection();
+}
+
+void NetEventController::disconnect() {
+    _network->close();
+    _network = nullptr;
+    _status = Status::IDLE;
+}
+
+bool NetEventController::checkConnection() {
+    auto state = _network->getState();
+    if (state == NetcodeConnection::State::CONNECTED) {
+        _status = Status::CONNECTED;
+        if (_isHost) {
+            _roomid = _network->getRoom();
+        }
+        return true;
+    }
+    else if (state == NetcodeConnection::State::NEGOTIATING) {
+        _status = Status::CONNECTING;
+        return true;
+    }
+    else if (state == NetcodeConnection::State::DENIED ||
+        state == NetcodeConnection::State::DISCONNECTED || state == NetcodeConnection::State::FAILED ||
+        state == NetcodeConnection::State::INVALID || state == NetcodeConnection::State::MISMATCHED) {
+        _status = Status::NETERROR;
+        return false;
+    }
+    return true;
+}
+
+void NetEventController::processReceivedEvent(const std::shared_ptr<NetEvent>& e) {
+    if (_status == INGAME){
+        if (auto phys = std::dynamic_pointer_cast<PhysSyncEvent>(e)) {
+			_reservedInEventQueue.push(phys);
+		}
+        else {
+            _inEventQueue.push(e);
+        } 
+    }
+    else if (auto game = std::dynamic_pointer_cast<GameStateEvent>(e)) {
+        if (_status == Status::CONNECTED && game->getType() == GameStateEvent::GAME_START) {
+            _status = Status::INGAME;
+            _startGameTimeStamp = _appRef->getUpdateCount();
+        }
+    }
+}
+
 void NetEventController::processReceivedData(){
     _network->receive([this](const std::string source,
         const std::vector<std::byte>& data) {
-        _inEventQueue.push(unwrap(data,source));
+        processReceivedEvent(unwrap(data, source)); 
     });
 }
 

@@ -13,14 +13,40 @@
 
 using namespace cugl;
 
+void Interpolator::processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& event) {
+    const std::vector<ObjParam>& params = event->getSyncList();
+    for (auto it = params.begin(); it != params.end(); it++) {
+        ObjParam param = (*it);
+        CUAssertLog(_world->_idToObj.count(param.objId), "Invalid PhysSyncEvent, obj not found.");
+            
+        auto obj = _world->_idToObj.at(param.objId);  
+        float x = param.x;            
+        float y = param.y;            
+        float angle = param.angle; 
+        float vAngular = param.vAngular;
+        float vx = param.vx;
+        float vy = param.vy;
+        float diff = (obj->getPosition() - Vec2(x, y)).length();
+        float angDiff = 10 * abs(obj->getAngle() - angle);
+            
+        int steps = SDL_max(1, SDL_min(30, SDL_max((int)(diff * 30), (int)angDiff)));
+
+        std::shared_ptr<targetParam> target = std::make_shared<targetParam>();
+        target->targetVel = Vec2(vx, vy);
+        target->targetAngle = angle;
+        target->targetAngV = vAngular;
+        target->curStep = 0;
+        target->numSteps = steps;
+        target->P0 = obj->getPosition();
+        target->P1 = obj->getPosition() + obj->getLinearVelocity() / 10.f;
+        target->P3 = Vec2(x, y);
+        target->P2 = target->P3 - target->targetVel / 10.f;
+
+        addObject(obj, target);
+    }
+}
+
 void Interpolator::addObject(std::shared_ptr<physics2::Obstacle> obj, std::shared_ptr<targetParam> param){
-//  if(_cache.count(obj)){
-//            auto oldParam = _cache.at(obj);
-//            obj->setPosition(oldParam->P3);
-//            obj->setLinearVelocity(oldParam->targetVel);
-//            obj->setAngle(oldParam->targetAngle);
-//            obj->setAngularVelocity(oldParam->targetAngV);
-//        }
     if(_cache.count(obj)){
         #if ITPR_METHOD == 1
         return;
@@ -35,10 +61,6 @@ void Interpolator::addObject(std::shared_ptr<physics2::Obstacle> obj, std::share
     _cache.insert(std::make_pair(obj,param));
     _stepSum += param->numSteps;
     _itprCount ++;
-//    Vec2 P0 = obj->getPosition();
-//    Vec2 P1 = obj->getPosition()+obj->getLinearVelocity();
-//    Vec3 P2 = Vec2(param->ste[0],param->second[1])-Vec2(param->second[2],param->second[3]);
-//    Vec3 P3 = Vec2(param->second[0],param->second[1]);
 }
 
 bool Interpolator::contains(std::shared_ptr<physics2::Obstacle> obj){
@@ -73,31 +95,24 @@ void Interpolator::fixedUpdate(){
             obj->setPosition(pos);
             
             #elif ITPR_METHOD == 3
-            //Vec2 vel = obj->getLinearVelocity();
-            //ojb->setX(interpolate(stepsLeft,param->P3.x,obj->getX()));
-            //obj->setY(interpolate(stepsLeft,param->P3.y,obj->getY()));
-            
+
             Vec2 E = param->P3-obj->getPosition();
-            
             param->numI++;
             param->I = param->I + E;
             
-            Vec2 P = E*10.f;
-            
+            Vec2 P = E*10.f; 
             Vec2 I = param->I*0.01f;
-            
             Vec2 D = obj->getLinearVelocity()*0.5f;
-            
             obj->setLinearVelocity(obj->getLinearVelocity()+P-D+I);
             
             #else
             obj->setX(interpolate(stepsLeft,param->P3.x,obj->getX()));
             obj->setY(interpolate(stepsLeft,param->P3.y,obj->getY()));
-            
+            obj->setVX(interpolate(stepsLeft, param->targetVel.x, obj->getVX()));
+            obj->setVY(interpolate(stepsLeft, param->targetVel.y, obj->getVY()));
+
             #endif
             
-            //obj->setVX(interpolate(stepsLeft, param->targetVel.x, obj->getVX()));
-            //obj->setVY(interpolate(stepsLeft, param->targetVel.y, obj->getVY()));
             obj->setAngle(interpolate(stepsLeft, param->targetAngle, obj->getAngle()));
             obj->setAngularVelocity(interpolate(stepsLeft, param->targetAngV, obj->getAngularVelocity()));
         }

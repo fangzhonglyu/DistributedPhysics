@@ -83,7 +83,7 @@ public:
     };
 protected:
     Type _type;
-
+    Uint8 _shortUID;
 
 public:
     static std::shared_ptr<NetEvent> alloc() {
@@ -96,7 +96,15 @@ public:
         return ptr;
     }
 
-    GameStateEvent() {}
+    static std::shared_ptr<NetEvent> alloc(Type t, Uint32 _shortUID) {
+        std::shared_ptr<GameStateEvent> ptr = std::make_shared<GameStateEvent>();
+        ptr->setType(t);
+        return ptr;
+    }
+
+    GameStateEvent() {
+        _type = GAME_START;
+    }
 
     GameStateEvent(Type t) {
         _type = t;
@@ -106,8 +114,12 @@ public:
         _type = t;
     }
 
-    Type getType() {
+    Type getType() const {
         return _type;
+    }
+
+    Uint8 getShortUID() const {
+        return _shortUID;
     }
 
     /**
@@ -129,7 +141,7 @@ public:
                 data.push_back(std::byte(GAME_RESUME_FLAG));
                 break;
         }
-        data.push_back(std::byte(GAME_START));
+        data.push_back(std::byte(_shortUID));
         return data;
     }
 
@@ -151,6 +163,7 @@ public:
             case GAME_RESUME_FLAG:
                 _type = GAME_RESUME;
         }
+        _shortUID = (Uint8)data[1];
     }
 };
 
@@ -158,7 +171,7 @@ public:
  * The struct for an object snapshot. Contains the object's global Id, position, and velocity.
  */
 typedef struct{
-    Uint32 objId;
+    std::string objId;
     float x;
     float y;
     float vx;
@@ -173,7 +186,7 @@ typedef struct{
 class PhysSyncEvent : public NetEvent{
 private:
     /** The set of objectIds of all objects added to be serialized. Used to prevent duplicate objects. */
-    std::unordered_set<Uint32> _objSet;
+    std::unordered_set<std::string> _objSet;
     /** The serializer for converting basic types to byte vectors. */
     net::NetcodeSerializer _serializer;
     /** The deserializer for converting byte vectors to basic types. */
@@ -181,7 +194,6 @@ private:
 protected:
     /** The vector of added object snapshots. */
     std::vector<ObjParam> _syncList;
-    
 
 public:
     /**
@@ -205,6 +217,10 @@ public:
         _syncList.push_back(param);
     }
 
+    const std::vector<ObjParam>& getSyncList() const {
+		return _syncList;
+	}
+
     static std::shared_ptr<NetEvent> alloc() {
         return std::make_shared<PhysSyncEvent>();
     }
@@ -217,7 +233,7 @@ public:
         _serializer.writeUint32((Uint32)_syncList.size());
         for(auto it = _syncList.begin(); it != _syncList.end(); it++){
             ObjParam* obj = &(*it);
-            _serializer.writeUint32(obj->objId);
+            _serializer.writeString(obj->objId);
             _serializer.writeFloat(obj->x);
             _serializer.writeFloat(obj->y);
             _serializer.writeFloat(obj->vx);
@@ -240,7 +256,7 @@ public:
         Uint32 numObjs = _deserializer.readUint32();
         for(size_t i = 0; i < numObjs; i++){
             ObjParam param;
-            param.objId = _deserializer.readUint32();
+            param.objId = _deserializer.readString();
             param.x = _deserializer.readFloat();
             param.y = _deserializer.readFloat();
             param.vx = _deserializer.readFloat();

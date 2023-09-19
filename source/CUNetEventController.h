@@ -64,6 +64,8 @@ protected:
     const std::vector<std::byte>& wrap(const std::shared_ptr<NetEvent>& e);
     
     void processReceivedData();
+
+    void processReceivedEvent(const std::shared_ptr<NetEvent>& e);
     
     void sendQueuedOutData();
     
@@ -82,10 +84,16 @@ protected:
 	};
 
     std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventCompare> _inEventQueue;
+    std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventCompare> _reservedInEventQueue;
     std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventCompare> _outEventQueue;
 
 public:
-    NetEventController(void) { };
+    NetEventController(void):
+        _appRef{ nullptr },
+        _status{ Status::IDLE },
+        _isHost{ false },
+        _startGameTimeStamp{ 0 }
+    {};
     
     bool init(const std::shared_ptr<cugl::AssetManager>& assets);
 
@@ -100,11 +108,13 @@ public:
 
     void disconnect();
 
+    bool checkConnection();
+
     std::string getRoomID() const {
         return _roomid;
     }
 
-    bool getIsHost() const {
+    bool isHost() const {
         return _isHost;
     }
 
@@ -119,6 +129,7 @@ public:
     //template that must be of type NetEvent
     template <typename T>
     void attachEventType() {
+        //CUAssertLog(std::is_base_of<NetEvent, T>, "Attached type is not a derived Class of NetEvent.");
         if (!_eventTypeMap.count(std::type_index(typeid(T)))) {
             _eventTypeVector.push_back(std::make_shared<T>());
             _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _eventTypeVector.size() - 1));

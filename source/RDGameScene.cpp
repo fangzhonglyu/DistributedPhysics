@@ -794,10 +794,6 @@ void GameScene::processFire(netdata data){
     //crate->setBodyType(b2_kinematicBody);
     crate->setLinearVelocity(forward*50*firePower);
     
-    if(data.sourceID==""){
-        _owned.insert(crate->_id);
-    }
-    
     f2u.f = firePower;
     uint32_t fpu = f2u.u;
     f2u.f = angle;
@@ -1104,14 +1100,6 @@ void GameScene::beginContact(b2Contact* contact) {
     std::shared_ptr<physics2::Obstacle>& obj1= reinterpret_cast<std::shared_ptr<physics2::Obstacle>&>(body1->GetUserData().pointer);
     
     std::shared_ptr<physics2::Obstacle>& obj2= reinterpret_cast<std::shared_ptr<physics2::Obstacle>&>(body2->GetUserData().pointer);
-    
-    Uint32 obj1ID = obj1->_id;
-    Uint32 obj2ID = obj2->_id;
-    
-    if(obj1ID<_collisionMap.size() && obj2ID<_collisionMap.size()){
-        _collisionMap[obj1->_id].push_back(obj2ID);
-        _collisionMap[obj2->_id].push_back(obj1ID);
-    }
 }
 
 /**
