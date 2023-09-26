@@ -173,8 +173,8 @@ _isHost(false)
  *
  * @return true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const std::shared_ptr<NetEventController> network) {
-    return init(assets, Rect(0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT), Vec2(0, DEFAULT_GRAVITY), network);
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const std::shared_ptr<NetEventController> network, bool isHost) {
+    return init(assets, Rect(0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT), Vec2(0, DEFAULT_GRAVITY), network, isHost);
 }
 
 /**
@@ -193,8 +193,8 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const std::sha
  *
  * @return  true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const std::shared_ptr<NetEventController> network) {
-    return init(assets,rect,Vec2(0,DEFAULT_GRAVITY),network );
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const std::shared_ptr<NetEventController> network, bool isHost) {
+    return init(assets,rect,Vec2(0,DEFAULT_GRAVITY),network,isHost);
 }
 
 /**
@@ -214,13 +214,18 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
  *
  * @return  true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const Vec2 gravity, const std::shared_ptr<NetEventController> network) {
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const Vec2 gravity, const std::shared_ptr<NetEventController> network, bool isHost) {
     Size dimen = computeActiveSize();
 
     if (assets == nullptr) {
         return false;
     } else if (!Scene2::init(dimen)) {
         return false;
+    }
+    
+    _isHost = isHost;
+    if(LOG_MSGS || LOG_POS){
+        _writer = _writer->alloc(isHost?"log_host.txt":"log_client.txt");
     }
 
     _network = network;
@@ -304,13 +309,6 @@ void GameScene::dispose() {
             _writer->close();
         }
         Scene2::dispose();
-    }
-}
-
-void GameScene::setHost(bool isHost){
-    _isHost = isHost;
-    if(LOG_MSGS || LOG_POS){
-        _writer = _writer->alloc(isHost?"log_host.txt":"log_client.txt");
     }
 }
 
@@ -439,7 +437,6 @@ void GameScene::populate(bool isInit) {
         wallobj1 = physics2::PolygonObstacle::allocWithAnchor(wall1,Vec2::ANCHOR_CENTER);
         wallobj1->setDebugColor(STATIC_COLOR);
         wallobj1->setName(wname);
-        wallobj1->_id = 1111111111;
 
         // Set the physics attributes
         wallobj1->setBodyType(b2_staticBody);
@@ -467,7 +464,6 @@ void GameScene::populate(bool isInit) {
         wallobj2->setDensity(BASIC_DENSITY);
         wallobj2->setFriction(BASIC_FRICTION);
         wallobj2->setRestitution(BASIC_RESTITUTION);
-        wallobj2->_id = 1111111111;
 
         // Add the scene graph nodes to this object
         wall2 *= _scale;
