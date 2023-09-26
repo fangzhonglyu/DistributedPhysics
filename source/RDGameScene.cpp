@@ -173,8 +173,8 @@ _isHost(false)
  *
  * @return true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets) {
-    return init(assets,Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const std::shared_ptr<NetEventController> network) {
+    return init(assets, Rect(0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT), Vec2(0, DEFAULT_GRAVITY), network);
 }
 
 /**
@@ -193,8 +193,8 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets) {
  *
  * @return  true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect) {
-    return init(assets,rect,Vec2(0,DEFAULT_GRAVITY));
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const std::shared_ptr<NetEventController> network) {
+    return init(assets,rect,Vec2(0,DEFAULT_GRAVITY),network );
 }
 
 /**
@@ -214,7 +214,7 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
  *
  * @return  true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const Vec2 gravity) {
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rect, const Vec2 gravity, const std::shared_ptr<NetEventController> network) {
     Size dimen = computeActiveSize();
 
     if (assets == nullptr) {
@@ -222,6 +222,8 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     } else if (!Scene2::init(dimen)) {
         return false;
     }
+
+    _network = network;
     
     // Start up the input handler
     _assets = assets;
@@ -269,6 +271,8 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     _active = true;
     _complete = false;
     setDebug(false);
+
+    _network->initPhysics(_world);
     
     _netCache.clear();
     _serializer.reset();
@@ -531,13 +535,13 @@ void GameScene::populate(bool isInit) {
     Vec2 canPos1 = ((Vec2)CAN1_POS);
     _cannon1->setPosition(canPos1);
     _cannon1->setAngle(-M_PI_2);
-    _world->addObstacle(_cannon1);
+    _world->addInitObstacle(_cannon1);
     _worldnode->addChild(_cannon1Node);
     
     Vec2 canPos2 = ((Vec2)CAN2_POS);
     _cannon2->setPosition(canPos2);
     _cannon2->setAngle(M_PI_2);
-    _world->addObstacle(_cannon2);
+    _world->addInitObstacle(_cannon2);
     _worldnode->addChild(_cannon2Node);
 
     Timestamp end;
@@ -559,7 +563,7 @@ void GameScene::populate(bool isInit) {
  */
 void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
                             const std::shared_ptr<scene2::SceneNode>& node) {
-    _world->addObstacle(obj);
+    _world->addInitObstacle(obj);
     
     _objQueue.push(_nextObj);
     _objMap.insert(std::make_pair(_nextObj,obj));
@@ -597,7 +601,7 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
 
 void GameScene::addObstacleAlt(const std::shared_ptr<cugl::physics2::Obstacle>& obj,
                     const std::shared_ptr<cugl::scene2::SceneNode>& node){
-    _world->addObstacle(obj);
+    _world->addInitObstacle(obj);
     
     _objQueue.push(_nextObj);
     _objMap.insert(std::make_pair(_nextObj,obj));
@@ -750,32 +754,32 @@ void GameScene::processState(netdata data){
 }
 
 void GameScene::processCannon(netdata data){
-    CUAssert(data.flag == CANNON_FLAG);
-    _deserializer.reset();
-    _deserializer.receive(data.data);
-    bool which = _deserializer.readBool();
-    if(which == _isHost)
-        return;
-    CULog("CANNON,%llu",_counter);
-    auto cannon =  which ? _cannon1:_cannon2;
-    float angle = _deserializer.readFloat();
-    float angDiff = 30*abs(cannon->getAngle()-angle);
-    int steps = SDL_max(0,SDL_min(30,(int)angDiff));
-    
-    targetParam param;
-    param.targetVel = Vec2(0,0);
-    param.targetAngle = angle;
-    param.targetAngV = 0;
-    param.curStep = 0;
-    param.numSteps = steps;
-    param.P0 = cannon->getPosition();
-    param.P1 = param.P0;
-    param.P3 = param.P0;
-    param.P2 = param.P0;
-    
-    std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
-    
-    _itpr.addObject(cannon, paramP);
+    //CUAssert(data.flag == CANNON_FLAG);
+    //_deserializer.reset();
+    //_deserializer.receive(data.data);
+    //bool which = _deserializer.readBool();
+    //if(which == _isHost)
+    //    return;
+    //CULog("CANNON,%llu",_counter);
+    //auto cannon =  which ? _cannon1:_cannon2;
+    //float angle = _deserializer.readFloat();
+    //float angDiff = 30*abs(cannon->getAngle()-angle);
+    //int steps = SDL_max(0,SDL_min(30,(int)angDiff));
+    //
+    //targetParam param;
+    //param.targetVel = Vec2(0,0);
+    //param.targetAngle = angle;
+    //param.targetAngV = 0;
+    //param.curStep = 0;
+    //param.numSteps = steps;
+    //param.P0 = cannon->getPosition();
+    //param.P1 = param.P0;
+    //param.P3 = param.P0;
+    //param.P2 = param.P0;
+    //
+    //std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
+    //
+    //_itpr.addObject(cannon, paramP);
 //    std::vector<float> param = std::vector<float>();
 //    param.push_back(cannon->getX()); param.push_back(cannon->getY()); param.push_back(cannon->getVX()); param.push_back(cannon->getVY()); param.push_back(angle); param.push_back(0);
 //
@@ -829,19 +833,19 @@ void GameScene::updateNet(){
 }
 
 void GameScene::transmitNetdata(const netdata data){
-    _serializer.reset();
+    /*_serializer.reset();
     _serializer.writeUint64(data.timestamp);
     _serializer.writeUint32(data.flag);
     auto arr = _serializer.serialize();
-    arr.insert(std::end(arr), std::begin(data.data), std::end(data.data));
+    arr.insert(std::end(arr), std::begin(data.data), std::end(data.data));*/
     //_netCache.push(data, _counter);
     //_network->broadcast(arr);
 }
 
 void GameScene::queueNetdata(netdata data){
-    data.receivedBy = _counter + PING_STEP;
+    /*data.receivedBy = _counter + PING_STEP;
     _outCache.push(data, _counter);
-    _netCache.push(data, _counter);
+    _netCache.push(data, _counter);*/
 }
 
 void GameScene::processData(const std::string source,
@@ -887,9 +891,9 @@ void GameScene::preUpdate(float dt) {
         Application::get()->quit();
     }
     
-    if (_input.didFire()) {
+    /*if (_input.didFire()) {
         queueNetdata(packFire(_counter+INPUT_DELAY));
-    }
+    }*/
     
     for (std::vector<int>& v: _collisionMap){
         v.clear();

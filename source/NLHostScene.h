@@ -26,23 +26,7 @@
  * code a little more clear.
  */
 class HostScene : public cugl::Scene2 {
-public:
-    /**
-     * The configuration status
-     *
-     * This is how the application knows to switch to the next scene.
-     */
-    enum Status {
-        /** Host is waiting on a connection */
-        WAIT,
-        /** Host is waiting on all players to join */
-        IDLE,
-        /** Time to start the game */
-        START,
-        /** Game was aborted; back to main menu */
-        ABORT
-    };
-    
+
 protected:
     /** The asset manager for this scene. */
     std::shared_ptr<cugl::AssetManager> _assets;
@@ -57,12 +41,11 @@ protected:
     std::shared_ptr<cugl::scene2::Label> _gameid;
     /** The players label (for updating) */
     std::shared_ptr<cugl::scene2::Label> _player;
+
+    bool clicked = false;
     
     /** The network configuration */
     cugl::net::NetcodeConfig _config;
-    
-    /** The current status */
-    Status _status;
     
     cugl::Timestamp _pingTimer;
     
@@ -124,16 +107,6 @@ public:
     virtual void setActive(bool value) override;
 
     /**
-     * Returns the scene status.
-     *
-     * Any value other than WAIT will transition to a new scene.
-     *
-     * @return the scene status
-     *
-     */
-    Status getStatus() const { return _status; }
-
-    /**
      * The method called to update the scene.
      *
      * We need to update this method to constantly talk to the server
@@ -164,50 +137,6 @@ private:
      * @param text      The new text value
      */
     void updateText(const std::shared_ptr<cugl::scene2::Button>& button, const std::string text);
-    
-    /**
-     * Reconfigures the start button for this scene
-     *
-     * This is necessary because what the buttons do depends on the state of the
-     * networking.
-     */
-    void configureStartButton();
-    
-    /**
-     * Connects to the game server as specified in the assets file
-     *
-     * The {@link #init} method set the configuration data. This method simply uses
-     * this to create a new {@Link NetworkConnection}. It also immediately calls
-     * {@link #checkConnection} to determine the scene state.
-     *
-     * @return true if the connection was successful
-     */
-    bool connect();
-
-    /**
-     * Processes data sent over the network.
-     *
-     * Once connection is established, all data sent over the network consistes of
-     * byte vectors. This function is a call back function to process that data.
-     * Note that this function may be called *multiple times* per animation frame,
-     * as the messages can come from several sources.
-     *
-     * In this lab, this method does not do all that much. Typically this is where
-     * players would communicate their names after being connected.
-     *
-     * @param source    The UUID of the sender
-     * @param data      The data received
-     */
-    void processData(const std::string source, const std::vector<std::byte>& data);
-    
-    /**
-     * Starts the game.
-     *
-     * This method is called once the requisite number of players have connected.
-     * It locks down the room and sends a "start game" message to all other
-     * players.
-     */
-    void startGame();
     
 };
 

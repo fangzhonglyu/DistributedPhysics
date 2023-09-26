@@ -34,13 +34,14 @@ void NetEventController::startGame() {
         auto players = _network->getPlayers();
         Uint8 shortUID = 1;
         for (auto it = players.begin(); it != players.end(); it++) {
-            _network->sendTo((*it), wrap(GameStateEvent::allocUIDAssign(shortUID++)));
+            //_network->sendTo((*it), wrap(GameStateEvent::allocUIDAssign(shortUID++)));
         }
+        _network->broadcast(wrap(GameStateEvent::allocUIDAssign(shortUID++)));
     }
 }
 
 void NetEventController::markReady() {
-    if (_status == Status::CONNECTED && _shortUUID != 0) {
+    if (_status == Status::INSESSION && _shortUUID != 0) {
 		_status = Status::READY;
 		_network->broadcast(wrap(GameStateEvent::allocReady()));
 	}
@@ -122,6 +123,7 @@ void NetEventController::processReceivedEvent(const std::shared_ptr<NetEvent>& e
 
 void NetEventController::processGameStateEvent(const std::shared_ptr<GameStateEvent>& e) {
     if (_status == CONNECTED && e->getType() == GameStateEvent::UID_ASSIGN) {
+        CULog("UID ASSIGNED");
         _shortUUID = e->getShortUID();
         _status = INSESSION;
     }
@@ -132,8 +134,9 @@ void NetEventController::processGameStateEvent(const std::shared_ptr<GameStateEv
     if (_isHost) {
         if ((_status == INSESSION || _status == READY) && e->getType() == GameStateEvent::CLIENT_RDY) {
             _numReady++;
+            CULog("ready from %s, num &u", e->getSourceId().c_str(), _numReady);
         }
-        if (_status == READY && _numReady == _network->getNumPlayers()) {
+        if (_numReady == _network->getNumPlayers()) {
             _network->broadcast(wrap(GameStateEvent::allocGameStart()));
         }
     }
@@ -211,7 +214,7 @@ std::shared_ptr<NetEvent> NetEventController::unwrap(const std::vector<std::byte
     return e;
 }
 
-const std::vector<std::byte>& NetEventController::wrap(const std::shared_ptr<NetEvent>& e) {
+const std::vector<std::byte> NetEventController::wrap(const std::shared_ptr<NetEvent>& e) {
     LWSerializer serializer;
     serializer.writeByte((std::byte)getType(*e));
     serializer.writeUint64(_appRef->getUpdateCount()-_startGameTimeStamp);

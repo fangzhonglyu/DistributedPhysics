@@ -59,7 +59,7 @@ public:
     NetPhysicsController():
         _itprCount(0),_ovrdCount(0),_stepSum(0),_objRotation(0) {};
 
-    void init(std::shared_ptr<cugl::physics2::ObstacleWorld> world) {
+    void init(std::shared_ptr<cugl::physics2::ObstacleWorld>& world) {
         _world = world;
     }
 

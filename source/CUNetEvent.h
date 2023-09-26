@@ -109,6 +109,7 @@ public:
     static std::shared_ptr<NetEvent> allocUIDAssign(Uint32 _shortUID) {
         std::shared_ptr<GameStateEvent> ptr = std::make_shared<GameStateEvent>();
         ptr->setType(UID_ASSIGN);
+        ptr->_shortUID = _shortUID;
         return ptr;
     }
 
@@ -228,13 +229,13 @@ public:
      *
      * @param obj the obstacle reference to add, duplicate obstacles would be ignored
      */
-    void addObj(const std::shared_ptr<physics2::Obstacle>& obj){
-        if(_objSet.count(obj->_id))
+    void addObj(const std::shared_ptr<physics2::Obstacle>& obj, std::string id){
+        if(_objSet.count(id))
             return;
         
-        _objSet.insert(obj->_id);
+        _objSet.insert(id);
         ObjParam param;
-        param.objId = obj->_id;
+        param.objId = id;
         param.x = obj->getX();
         param.y = obj->getY();
         param.vx = obj->getVX();
@@ -259,14 +260,14 @@ public:
         _serializer.reset();
         _serializer.writeUint32((Uint32)_syncList.size());
         for(auto it = _syncList.begin(); it != _syncList.end(); it++){
-            ObjParam* obj = &(*it);
-            _serializer.writeString(obj->objId);
-            _serializer.writeFloat(obj->x);
-            _serializer.writeFloat(obj->y);
-            _serializer.writeFloat(obj->vx);
-            _serializer.writeFloat(obj->vy);
-            _serializer.writeFloat(obj->angle);
-            _serializer.writeFloat(obj->vAngular);
+            ObjParam& obj = (*it);
+            _serializer.writeString(obj.objId);
+            _serializer.writeFloat(obj.x);
+            _serializer.writeFloat(obj.y);
+            _serializer.writeFloat(obj.vx);
+            _serializer.writeFloat(obj.vy);
+            _serializer.writeFloat(obj.angle);
+            _serializer.writeFloat(obj.vAngular);
         }
         return _serializer.serialize();
     }

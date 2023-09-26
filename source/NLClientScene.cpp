@@ -137,7 +137,6 @@ void ClientScene::setActive(bool value) {
         if (value) {
             _gameid->activate();
             _backout->activate();
-            _network = nullptr;
             _player->setText("1");
             configureStartButton();
             // Don't reset the room id
@@ -145,6 +144,7 @@ void ClientScene::setActive(bool value) {
             _gameid->deactivate();
             _startgame->deactivate();
             _backout->deactivate();
+            //_network = nullptr;
             // If any were pressed, reset them
             _startgame->setDown(false);
             _backout->setDown(false);

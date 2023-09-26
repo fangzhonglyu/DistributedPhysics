@@ -225,10 +225,10 @@ void RocketApp::updateMenuScene(float timestep) {
 void RocketApp::updateHostScene(float timestep) {
     _hostgame.update(timestep);
     if (_network->getStatus() == NetEventController::Status::INSESSION) {
-        _gameplay.init(_assets);
+        _gameplay.init(_assets, _network);
         _gameplay.setHost(true);
-        _gameplay.setNetwork(_network);
         _network->markReady();
+        CULog("DONE ONCE");
     }
     else if (_network->getStatus() == NetEventController::Status::INGAME) {
         _hostgame.setActive(false);
@@ -254,9 +254,8 @@ void RocketApp::updateHostScene(float timestep) {
 void RocketApp::updateClientScene(float timestep) {
     _joingame.update(timestep);
     if (_network->getStatus() == NetEventController::Status::INSESSION) {
-        _gameplay.init(_assets);
+        _gameplay.init(_assets, _network);
         _gameplay.setHost(false);
-        _gameplay.setNetwork(_network);
         _network->markReady();
     }
     else if (_network->getStatus() == NetEventController::Status::INGAME) {

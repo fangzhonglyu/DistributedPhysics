@@ -19,7 +19,7 @@ void NetPhysicsController::processPhysSyncEvent(const std::shared_ptr<PhysSyncEv
     const std::vector<ObjParam>& params = event->getSyncList();
     for (auto it = params.begin(); it != params.end(); it++) {
         ObjParam param = (*it);
-        CUAssertLog(_world->getIdToObj().count(param.objId), "Invalid PhysSyncEvent, obj not found.");
+        CUAssertLog(_world->getIdToObj().count(param.objId), "Invalid PhysSyncEvent, obj %s not found.",param.objId.c_str());
             
         auto obj = _world->getIdToObj().at(param.objId);
         float x = param.x;            
@@ -83,7 +83,8 @@ std::shared_ptr<PhysSyncEvent> NetPhysicsController::packPhysSync() {
         ; });
 
     for (size_t i = 0; i < 20; i++) {
-        event->addObj(_world->getObstacles()[_objRotation]);
+        auto obj = _world->getObstacles()[_objRotation];
+        event->addObj(obj,_world->getObjToId().at(obj));
 
         /*for (auto it = _collisionMap[id].begin(); it != _collisionMap[id].end(); it++) {
             event->addObj(*it);
@@ -91,7 +92,8 @@ std::shared_ptr<PhysSyncEvent> NetPhysicsController::packPhysSync() {
     }
 
     for (size_t i = 0; i < 20; i++) {
-        event->addObj(_world->getIdToObj().at(velQueue[i]));
+        auto obj = _world->getIdToObj().at(velQueue[i]);
+        event->addObj(obj,velQueue[i]);
 
         /*for (auto it = _collisionMap[id].begin(); it != _collisionMap[id].end(); it++) {
            event->addObj(*it);

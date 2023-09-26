@@ -72,7 +72,7 @@ protected:
 
     std::shared_ptr<NetEvent> unwrap(const std::vector<std::byte>& data,std::string source);
 
-    const std::vector<std::byte>& wrap(const std::shared_ptr<NetEvent>& e);
+    const std::vector<std::byte> wrap(const std::shared_ptr<NetEvent>& e);
     
     void processReceivedData();
 
@@ -105,7 +105,12 @@ public:
         _appRef{ nullptr },
         _status{ Status::IDLE },
         _isHost{ false },
-        _startGameTimeStamp{ 0 }
+        _startGameTimeStamp{ 0 },
+        _shortUUID{ 0 },
+        _numReady{ 0 },
+        _roomid{ "" },
+        _assets{ nullptr },
+        _network{ nullptr }
     {};
     
     bool init(const std::shared_ptr<cugl::AssetManager>& assets);
@@ -153,8 +158,8 @@ public:
     void attachEventType(std::function<std::shared_ptr<NetEvent>()> allocFunc) {
         //CUAssertLog(std::is_base_of_v<NetEvent, T>, "Attached type is not a derived Class of NetEvent.");
         if (!_eventTypeMap.count(std::type_index(typeid(T)))) {
+            _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _allocFuncVector.size()));
             _allocFuncVector.push_back(allocFunc);
-            _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _allocFuncVector.size() - 1));
         }
     }
 

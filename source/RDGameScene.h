@@ -228,7 +228,7 @@ public:
      *
      * @return true if the controller is initialized properly, false otherwise.
      */
-    bool init(const std::shared_ptr<cugl::AssetManager>& assets);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const std::shared_ptr<NetEventController> network);
 
     /**
      * Initializes the controller contents, and starts the game
@@ -246,7 +246,7 @@ public:
      *
      * @return  true if the controller is initialized properly, false otherwise.
      */
-    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect, const std::shared_ptr<NetEventController> network);
     
     /**
      * Initializes the controller contents, and starts the game
@@ -265,14 +265,9 @@ public:
      *
      * @return  true if the controller is initialized properly, false otherwise.
      */
-    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect, const cugl::Vec2 gravity);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets, const cugl::Rect rect, const cugl::Vec2 gravity, const std::shared_ptr<NetEventController> network);
     
     void setHost(bool isHost);
-    
-    void setNetwork(const std::shared_ptr<NetEventController> network){
-        _network = network;
-        _network->initPhysics(_world);
-    }
     
     
 #pragma mark -
