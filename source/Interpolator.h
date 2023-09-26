@@ -27,7 +27,18 @@ typedef struct{
     Uint64 numI;
 } targetParam;
 
-class Interpolator {
+class CUObstacleFactory {
+public:
+    static std::shared_ptr<CUObstacleFactory> alloc() {
+        return std::make_shared<CUObstacleFactory>();
+    };
+    /**
+     * Serialize any paramater that the event contains to a vector of bytes.
+     */
+    virtual std::shared_ptr<physics2::Obstacle> createObstacle();
+};
+
+class NetPhysicsController {
     
 protected:
     long _itprCount;
@@ -36,6 +47,8 @@ protected:
     
     long _stepSum;
 
+    Uint32 _objRotation;
+
     std::shared_ptr<cugl::physics2::ObstacleWorld> _world;
     
     std::map<std::shared_ptr<physics2::Obstacle>,std::shared_ptr<targetParam>> _cache;
@@ -43,8 +56,8 @@ protected:
     std::vector<std::shared_ptr<physics2::Obstacle>> _deleteCache;
     
 public:
-    Interpolator():
-        _itprCount(0),_ovrdCount(0),_stepSum(0){};
+    NetPhysicsController():
+        _itprCount(0),_ovrdCount(0),_stepSum(0),_objRotation(0) {};
 
     void init(std::shared_ptr<cugl::physics2::ObstacleWorld> world) {
         _world = world;
@@ -61,6 +74,8 @@ public:
     bool contains(std::shared_ptr<physics2::Obstacle> obj);
 
     void processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& event);
+
+    std::shared_ptr<PhysSyncEvent> packPhysSync();
     
     void addObject(std::shared_ptr<physics2::Obstacle> obj, std::shared_ptr<targetParam> param);
     

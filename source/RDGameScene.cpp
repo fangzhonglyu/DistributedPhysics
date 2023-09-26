@@ -638,115 +638,6 @@ netdata GameScene::packFire(Uint64 timestamp, float power){
     return data;
 }
 
-netdata GameScene::packState(Uint64 timestamp){
-   
-    netdata data;
-    data.timestamp = timestamp;
-    data.flag = STATE_SYNC_FLAG;
-    _serializer.reset();
-    
-    if(_isHost){
-        std::vector<Uint32> velQueue;
-        for(auto it = _objMap.begin(); it != _objMap.end(); it++){
-            Uint32 id  = (*it).first;
-            auto obj = (*it).second;
-            velQueue.push_back(id);
-        }
-        
-        std::sort(velQueue.begin(),velQueue.end(),[this](Uint32 const& l, Uint32 const& r) {
-            return _objMap.at(l)->getLinearVelocity().length() > _objMap.at(r)->getLinearVelocity().length();
-            ; });
-        
-        Uint32 num = 0;
-        
-        _serializer.writeUint32(0);
-        
-        std::unordered_set<Uint32> list;
-        
-        for(size_t i = 0; i < 20; i++){
-            Uint32 id = _objQueue.front();
-            if(!list.count(id)){
-                _objQueue.pop();
-                auto obj = _objMap.at(id);
-                list.insert(id);
-                _serializer.writeUint32(id);
-                _serializer.writeFloat(obj->getX());
-                _serializer.writeFloat(obj->getY());
-                _serializer.writeFloat(obj->getVX());
-                _serializer.writeFloat(obj->getVY());
-                _serializer.writeFloat(obj->getAngle());
-                _serializer.writeFloat(obj->getAngularVelocity());
-                _objQueue.push(id);
-                num++;
-            }
-//            for(auto it = _collisionMap[id].begin(); it !=_collisionMap[id].end(); it++){
-//                Uint32 tid = (*it);
-//                if(!list.count(id)){
-//                    auto obj2 = _objMap.at(tid);
-//                    _serializer.writeUint32(tid);
-//                    _serializer.writeFloat(obj2->getX());
-//                    _serializer.writeFloat(obj2->getY());
-//                    _serializer.writeFloat(obj2->getVX());
-//                    _serializer.writeFloat(obj2->getVY());
-//                    _serializer.writeFloat(obj2->getAngle());
-//                    _serializer.writeFloat(obj2->getAngularVelocity());
-//                    num++;
-//                }
-//            }
-        }
-        
-        for(size_t i = 0; i < 20; i++){
-            Uint32 id = velQueue[i];
-            
-            if(!list.count(id)){
-                auto obj = _objMap.at(id);
-                list.insert(id);
-                _serializer.writeUint32(id);
-                _serializer.writeFloat(obj->getX());
-                _serializer.writeFloat(obj->getY());
-                _serializer.writeFloat(obj->getVX());
-                _serializer.writeFloat(obj->getVY());
-                _serializer.writeFloat(obj->getAngle());
-                _serializer.writeFloat(obj->getAngularVelocity());
-                num++;
-            }
-            
-            for(auto it = _collisionMap[id].begin(); it !=_collisionMap[id].end(); it++){
-                Uint32 tid = (*it);
-                if(!list.count(id)){
-                    auto obj2 = _objMap.at(tid);
-                    _serializer.writeUint32(tid);
-                    _serializer.writeFloat(obj2->getX());
-                    _serializer.writeFloat(obj2->getY());
-                    _serializer.writeFloat(obj2->getVX());
-                    _serializer.writeFloat(obj2->getVY());
-                    _serializer.writeFloat(obj2->getAngle());
-                    _serializer.writeFloat(obj2->getAngularVelocity());
-                    num++;
-                }
-            }
-        }
-        _serializer.rewriteFirstUint32(num);
-    }
-    else{
-        _serializer.writeUint32((Uint32)_owned.size());
-        for(auto it = _owned.begin(); it != _owned.end(); it++){
-            Uint32 tid = (*it);
-            auto obj2 = _objMap.at(tid);
-            _serializer.writeUint32(tid);
-            _serializer.writeFloat(obj2->getX());
-            _serializer.writeFloat(obj2->getY());
-            _serializer.writeFloat(obj2->getVX());
-            _serializer.writeFloat(obj2->getVY());
-            _serializer.writeFloat(obj2->getAngle());
-            _serializer.writeFloat(obj2->getAngularVelocity());
-        }
-    }
-    
-    data.data = _serializer.serialize();
-    return data;
-}
-
 netdata GameScene::packReset(Uint64 timestamp){
     netdata data;
     data.timestamp = timestamp;
@@ -933,26 +824,8 @@ void GameScene::processCache(){
     }
 }
 
-bool GameScene::checkConnection() {
-    auto state = _network->getState();
-    if (state == cugl::net::NetcodeConnection::State::CONNECTED) {
-        return true;
-    }
-    else {
-        _network = nullptr;
-        _complete = true;
-        return false;
-    }
-}
-
 void GameScene::updateNet(){
-    if (_network) {
-        _network->receive([this](const std::string source,
-                                 const std::vector<std::byte>& data) {
-            processData(source, data);
-        });
-        checkConnection();
-    }
+    _network->updateNet();
 }
 
 void GameScene::transmitNetdata(const netdata data){
@@ -962,7 +835,7 @@ void GameScene::transmitNetdata(const netdata data){
     auto arr = _serializer.serialize();
     arr.insert(std::end(arr), std::begin(data.data), std::end(data.data));
     //_netCache.push(data, _counter);
-    _network->broadcast(arr);
+    //_network->broadcast(arr);
 }
 
 void GameScene::queueNetdata(netdata data){
@@ -1016,10 +889,6 @@ void GameScene::preUpdate(float dt) {
     
     if (_input.didFire()) {
         queueNetdata(packFire(_counter+INPUT_DELAY));
-    }
-    
-    if (!_objQueue.empty()){
-        queueNetdata(packState(_counter));
     }
     
     for (std::vector<int>& v: _collisionMap){

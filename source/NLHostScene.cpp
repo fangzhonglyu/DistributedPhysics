@@ -69,7 +69,7 @@ static std::string hex2dec(const std::string hex) {
  *
  * @return true if the controller is initialized properly, false otherwise.
  */
-bool HostScene::init(const std::shared_ptr<cugl::AssetManager>& assets) {
+bool HostScene::init(const std::shared_ptr<cugl::AssetManager>& assets, std::shared_ptr<NetEventController> network) {
     // Initialize the scene to a locked width
     Size dimen = Application::get()->getDisplaySize();
     dimen *= SCENE_HEIGHT/dimen.height;
@@ -78,6 +78,9 @@ bool HostScene::init(const std::shared_ptr<cugl::AssetManager>& assets) {
     } else if (!Scene2::init(dimen)) {
         return false;
     }
+
+    _network = network;
+    _network->connectAsHost();
     
     // Start up the input handler
     _assets = assets;
@@ -96,7 +99,7 @@ bool HostScene::init(const std::shared_ptr<cugl::AssetManager>& assets) {
     // Program the buttons
     _backout->addListener([this](const std::string& name, bool down) {
         if (down) {
-            disconnect();
+            _network->disconnect();
 	    	_status = Status::ABORT;
         }
     });
@@ -187,24 +190,16 @@ void HostScene::updateText(const std::shared_ptr<scene2::Button>& button, const 
  */
 void HostScene::update(float timestep) {
     // We have written this for you this time
-    if (_network) {
-        _network->receive([this](const std::string source,
-                                 const std::vector<std::byte>& data) {
-            processData(source,data);
-        });
-        checkConnection();
-        // Do this last for button safety
-        configureStartButton();
-        if(_status == IDLE)
-            _player->setText(std::to_string(_network->getNumPlayers()));
-        
-        if(_receiveCount >= PING_TEST_COUNT){
-            CULog("overall ping %fms",_totalPing/((float)_receiveCount)/2.f/1000.f);
-            _receiveCount = 0;
-        }
-        if(_network->getNumPlayers()>1 && _sendCount < PING_TEST_COUNT && _receiveCount==_sendCount){
-            sendPingTest();
-        }
+    _network->updateNet();
+    if(_network->getStatus() == NetEventController::Status::CONNECTED){
+		_status = Status::IDLE;
+		_gameid->setText(hex2dec(_network->getRoomID()));
+		_startgame->activate();
+	}
+    // Do this last for button safety
+    configureStartButton();
+    if(_status == IDLE){
+        _player->setText(std::to_string(_network->getNumPlayers()));
     }
 }
 
@@ -245,41 +240,7 @@ void HostScene::processData(const std::string source,
  * @return true if the connection was successful
  */
 bool HostScene::connect() {
-    _network = _network->alloc(_config);
-    _network->open();
-    return checkConnection();
-}
-
-/**
- * Checks that the network connection is still active.
- *
- * Even if you are not sending messages all that often, you need to be calling
- * this method regularly. This method is used to determine the current state
- * of the scene.
- *
- * @return true if the network connection is still active.
- */
-bool HostScene::checkConnection() {
-    auto state = _network->getState();
-    if (state == NetcodeConnection::State::CONNECTED) {
-        if (_status == Status::WAIT) {
-            _status = Status::IDLE;
-            _gameid->setText(hex2dec(_network->getRoom()));
-        }
-        return true;
-    }
-    else if (state == NetcodeConnection::State::NEGOTIATING) {
-        _status = Status::WAIT;
-        return true;
-    }
-    else if (state == NetcodeConnection::State::DENIED ||
-        state == NetcodeConnection::State::DISCONNECTED || state == NetcodeConnection::State::FAILED ||
-        state == NetcodeConnection::State::INVALID || state == NetcodeConnection::State::MISMATCHED){
-        disconnect();
-        _status = Status::WAIT;
-        return false;
-    }
-    return true;
+    return _network->connectAsHost();
 }
 
 /**
@@ -310,19 +271,5 @@ void HostScene::configureStartButton() {
 void HostScene::startGame() {
     _status = Status::START;
     // ADD YOUR CODE HERE
-    auto bytes = std::vector<std::byte>();
-    bytes.push_back(std::byte(255));
-    _network->broadcast(bytes);
-}
-
-void HostScene::sendPingTest(){
-    auto bytes = std::vector<std::byte>();
-    bytes.push_back(std::byte(111));
-    for(int i = 0; i < 31; i++){
-        bytes.push_back(std::byte(i));
-    }
-    _network->broadcast(bytes);
-    _pingTimer.mark();
-    _sendCount++;
-    CULog("sending ping test %d",_sendCount);
+    _network->startGame();
 }

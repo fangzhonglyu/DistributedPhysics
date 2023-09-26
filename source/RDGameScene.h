@@ -35,6 +35,7 @@
 #include "NetworkData.h"
 #include "RDNetwork.h"
 #include "Interpolator.h"
+#include "CUNetEventController.h"
 /**
  * This class is the primary gameplay constroller for the demo.
  *
@@ -88,7 +89,7 @@ protected:
     
     NetCache _outCache;
     
-    std::shared_ptr<cugl::net::NetcodeConnection> _network;
+    std::shared_ptr<NetEventController> _network;
     
 //    cugl::net::NetcodeSerializer _serializer;
 //
@@ -118,7 +119,7 @@ protected:
     
     Uint32 _nextObj;
     
-    Interpolator _itpr;
+    NetPhysicsController _itpr;
     
     std::shared_ptr<cugl::physics2::BoxObstacle> _red;
     
@@ -184,8 +185,6 @@ private:
     void processData(const std::string source, const std::vector<std::byte>& data);
     
     void updateNet();
-    
-    bool checkConnection();
     
     void transmitNetdata(const netdata data);
     
@@ -270,8 +269,9 @@ public:
     
     void setHost(bool isHost);
     
-    void setNetwork(const std::shared_ptr<cugl::net::NetcodeConnection> network){
+    void setNetwork(const std::shared_ptr<NetEventController> network){
         _network = network;
+        _network->initPhysics(_world);
     }
     
     
@@ -353,7 +353,7 @@ public:
     
     netdata packFire(Uint64 timestamp,float power);
     
-    netdata packState(Uint64 timestamp);
+    std::shared_ptr<PhysSyncEvent> packState(Uint64 timestamp);
     
     netdata packReset(Uint64 timestamp);
     

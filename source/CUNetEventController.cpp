@@ -8,16 +8,16 @@
 #include "CUNetEventController.h"
 #include "CULWSerializer.h"
 
-#define MAX_OUT_MSG 100
-#define MAX_OUT_BYTES 100000
+#define MAX_OUT_MSG 1000
+#define MAX_OUT_BYTES 10000000
 #define MIN_MSG_LENGTH sizeof(std::byte)+sizeof(Uint64)
 
 using namespace cugl::net;
 
 bool NetEventController::init(const std::shared_ptr<cugl::AssetManager>& assets) {
     // Attach the primitive event types for deserialization
-	attachEventType<PhysSyncEvent>();
-    attachEventType<GameStateEvent>();
+	attachEventType<PhysSyncEvent>(PhysSyncEvent::alloc);
+    attachEventType<GameStateEvent>(GameStateEvent::alloc);
 
     // Configure the NetcodeConnection
     _assets = assets;
@@ -30,15 +30,20 @@ bool NetEventController::init(const std::shared_ptr<cugl::AssetManager>& assets)
 
 void NetEventController::startGame() {
     if (_isHost && _status == Status::CONNECTED) {
+        _network->startSession();
         auto players = _network->getPlayers();
-        Uint8 shortUID = 0;
+        Uint8 shortUID = 1;
         for (auto it = players.begin(); it != players.end(); it++) {
-            _network->sendTo((*it), wrap(GameStateEvent::alloc(GameStateEvent::GAME_START,shortUID++)));
+            _network->sendTo((*it), wrap(GameStateEvent::allocUIDAssign(shortUID++)));
         }
-        pushOutEvent(GameStateEvent::alloc(GameStateEvent::GAME_START));
-        sendQueuedOutData();
     }
-    _startGameTimeStamp = _appRef->getUpdateCount();
+}
+
+void NetEventController::markReady() {
+    if (_status == Status::CONNECTED && _shortUUID != 0) {
+		_status = Status::READY;
+		_network->broadcast(wrap(GameStateEvent::allocReady()));
+	}
 }
 
 bool NetEventController::connectAsHost() {
@@ -73,13 +78,15 @@ bool NetEventController::connectAsClient(std::string roomid) {
 void NetEventController::disconnect() {
     _network->close();
     _network = nullptr;
+    _shortUUID = 0;
     _status = Status::IDLE;
 }
 
 bool NetEventController::checkConnection() {
     auto state = _network->getState();
     if (state == NetcodeConnection::State::CONNECTED) {
-        _status = Status::CONNECTED;
+        if(_status == Status::CONNECTING || _status == Status::IDLE)
+            _status = Status::CONNECTED;
         if (_isHost) {
             _roomid = _network->getRoom();
         }
@@ -101,16 +108,33 @@ bool NetEventController::checkConnection() {
 void NetEventController::processReceivedEvent(const std::shared_ptr<NetEvent>& e) {
     if (_status == INGAME){
         if (auto phys = std::dynamic_pointer_cast<PhysSyncEvent>(e)) {
-			_reservedInEventQueue.push(phys);
+			_physController.processPhysSyncEvent(phys);
+            //_reservedInEventQueue.push(phys);
 		}
         else {
             _inEventQueue.push(e);
         } 
     }
     else if (auto game = std::dynamic_pointer_cast<GameStateEvent>(e)) {
-        if (_status == Status::CONNECTED && game->getType() == GameStateEvent::GAME_START) {
-            _status = Status::INGAME;
-            _startGameTimeStamp = _appRef->getUpdateCount();
+        processGameStateEvent(game);
+    }
+}
+
+void NetEventController::processGameStateEvent(const std::shared_ptr<GameStateEvent>& e) {
+    if (_status == CONNECTED && e->getType() == GameStateEvent::UID_ASSIGN) {
+        _shortUUID = e->getShortUID();
+        _status = INSESSION;
+    }
+    if (_status == READY && e->getType() == GameStateEvent::GAME_START) {
+        _status = INGAME;
+        _startGameTimeStamp = _appRef->getUpdateCount();
+    }
+    if (_isHost) {
+        if ((_status == INSESSION || _status == READY) && e->getType() == GameStateEvent::CLIENT_RDY) {
+            _numReady++;
+        }
+        if (_status == READY && _numReady == _network->getNumPlayers()) {
+            _network->broadcast(wrap(GameStateEvent::allocGameStart()));
         }
     }
 }
@@ -142,7 +166,16 @@ void NetEventController::sendQueuedOutData(){
 
 void NetEventController::updateNet() {
     if(_network){
+        checkConnection();
         processReceivedData();
+        
+        if (_status == INGAME) {
+            if (_isHost) {
+                pushOutEvent(_physController.packPhysSync());
+            }
+			_physController.fixedUpdate();
+		}
+
         sendQueuedOutData();
     }
 }
@@ -166,11 +199,11 @@ void NetEventController::pushOutEvent(const std::shared_ptr<NetEvent>& e) {
 }
 
 std::shared_ptr<NetEvent> NetEventController::unwrap(const std::vector<std::byte>& data, std::string source) {
-    CUAssertLog(data.size() >= MIN_MSG_LENGTH && (Uint8)data[0] < _eventTypeVector.size(), "Unwrapping invalid event");
+    CUAssertLog(data.size() >= MIN_MSG_LENGTH && (Uint8)data[0] < _allocFuncVector.size(), "Unwrapping invalid event");
     LWDeserializer deserializer;
     deserializer.receive(data);
     Uint8 eventType = (Uint8)deserializer.readByte();
-    std::shared_ptr<NetEvent> e = _eventTypeVector[eventType]->alloc();
+    std::shared_ptr<NetEvent> e = _allocFuncVector[eventType]();
     Uint64 eventTimeStamp = deserializer.readUint64();
     Uint64 receiveTimeStamp =  _appRef->getUpdateCount()-_startGameTimeStamp;
 	e->setMetaData(eventTimeStamp, receiveTimeStamp, source);

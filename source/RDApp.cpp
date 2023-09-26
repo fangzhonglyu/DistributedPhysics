@@ -131,11 +131,12 @@ void RocketApp::preUpdate(float timestep){
         _loading.update(0.01f);
     }
     else if (_status == LOAD) {
+        _network = NetEventController::alloc(_assets);
         _loading.dispose(); // Disables the input listeners in this mode
         _mainmenu.init(_assets);
         _mainmenu.setActive(true);
-        _hostgame.init(_assets);
-        _joingame.init(_assets);
+        _hostgame.init(_assets,_network);
+        _joingame.init(_assets,_network);
         //_gameplay.init(_assets);
         _status = MENU;
     }
@@ -223,27 +224,23 @@ void RocketApp::updateMenuScene(float timestep) {
  */
 void RocketApp::updateHostScene(float timestep) {
     _hostgame.update(timestep);
-    switch (_hostgame.getStatus()) {
-        case HostScene::Status::ABORT:
-            _hostgame.setActive(false);
-            _mainmenu.setActive(true);
-            _status = MENU;
-            break;
-        case HostScene::Status::START:
-            _hostgame.setActive(false);
-            _gameplay.init(_assets);
-            _gameplay.setActive(true);
-            _status = GAME;
-            // Transfer connection ownership
-            _gameplay.setNetwork(_hostgame.getConnection());
-            _hostgame.disconnect();
-            _gameplay.setHost(true);
-            break;
-        case HostScene::Status::WAIT:
-        case HostScene::Status::IDLE:
-            // DO NOTHING
-            break;
+    if (_network->getStatus() == NetEventController::Status::INSESSION) {
+        _gameplay.init(_assets);
+        _gameplay.setHost(true);
+        _gameplay.setNetwork(_network);
+        _network->markReady();
     }
+    else if (_network->getStatus() == NetEventController::Status::INGAME) {
+        _hostgame.setActive(false);
+        _gameplay.setActive(true);
+        _status = GAME;
+    }
+    else if (_network->getStatus() == NetEventController::Status::NETERROR) {
+		_hostgame.setActive(false);
+		_mainmenu.setActive(true);
+        _gameplay.dispose();
+		_status = MENU;
+	}
 }
 
 /**
@@ -256,28 +253,23 @@ void RocketApp::updateHostScene(float timestep) {
  */
 void RocketApp::updateClientScene(float timestep) {
     _joingame.update(timestep);
-    switch (_joingame.getStatus()) {
-        case ClientScene::Status::ABORT:
-            _joingame.setActive(false);
-            _mainmenu.setActive(true);
-            _status = MENU;
-            break;
-        case ClientScene::Status::START:
-            _joingame.setActive(false);
-            _gameplay.init(_assets);
-            _gameplay.setActive(true);
-            _status = GAME;
-            // Transfer connection ownership
-            _gameplay.setNetwork(_joingame.getConnection());
-            _joingame.disconnect();
-            _gameplay.setHost(false);
-            break;
-        case ClientScene::Status::WAIT:
-        case ClientScene::Status::IDLE:
-        case ClientScene::Status::JOIN:
-            // DO NOTHING
-            break;
+    if (_network->getStatus() == NetEventController::Status::INSESSION) {
+        _gameplay.init(_assets);
+        _gameplay.setHost(false);
+        _gameplay.setNetwork(_network);
+        _network->markReady();
     }
+    else if (_network->getStatus() == NetEventController::Status::INGAME) {
+        _joingame.setActive(false);
+        _gameplay.setActive(true);
+        _status = GAME;
+    }
+    else if (_network->getStatus() == NetEventController::Status::NETERROR) {
+		_joingame.setActive(false);
+		_mainmenu.setActive(true);
+        _gameplay.dispose();
+		_status = MENU;
+	}
 }
 
 /**

@@ -64,10 +64,12 @@ public:
     const std::string getSourceId() const { return _sourceID; }   
 };
 
-#define GAME_START_FLAG  100
-#define GAME_RESET_FLAG  101
-#define GAME_PAUSE_FLAG  102
-#define GAME_RESUME_FLAG 103
+#define UID_ASSIGN_FLAG  100
+#define CLIENT_RDY_FLAG  101
+#define GAME_START_FLAG  102
+#define GAME_RESET_FLAG  103
+#define GAME_PAUSE_FLAG  104
+#define GAME_RESUME_FLAG 105
 
 /**
  * This class represents a message for the networked physics library to notify of game state changes, such as start game, reset, or pause.
@@ -76,6 +78,8 @@ class GameStateEvent : public NetEvent {
 public:
     enum Type
     {
+        UID_ASSIGN,
+        CLIENT_RDY,
         GAME_START,
         GAME_RESET,
         GAME_PAUSE,
@@ -86,19 +90,25 @@ protected:
     Uint8 _shortUID;
 
 public:
-    static std::shared_ptr<NetEvent> alloc() {
+    static std::shared_ptr<GameStateEvent> alloc() {
         return std::make_shared<GameStateEvent>();
     }
 
-    static std::shared_ptr<NetEvent> alloc(Type t) {
+    static std::shared_ptr<NetEvent> allocGameStart() {
         std::shared_ptr<GameStateEvent> ptr = std::make_shared<GameStateEvent>();
-        ptr->setType(t);
+        ptr->setType(GAME_START);
         return ptr;
     }
 
-    static std::shared_ptr<NetEvent> alloc(Type t, Uint32 _shortUID) {
+    static std::shared_ptr<NetEvent> allocReady() {
         std::shared_ptr<GameStateEvent> ptr = std::make_shared<GameStateEvent>();
-        ptr->setType(t);
+        ptr->setType(CLIENT_RDY);
+        return ptr;
+    }
+
+    static std::shared_ptr<NetEvent> allocUIDAssign(Uint32 _shortUID) {
+        std::shared_ptr<GameStateEvent> ptr = std::make_shared<GameStateEvent>();
+        ptr->setType(UID_ASSIGN);
         return ptr;
     }
 
@@ -140,8 +150,16 @@ public:
             case GAME_RESUME:
                 data.push_back(std::byte(GAME_RESUME_FLAG));
                 break;
+            case CLIENT_RDY:
+                data.push_back(std::byte(CLIENT_RDY_FLAG));
+                break;
+            case UID_ASSIGN:
+				data.push_back(std::byte(UID_ASSIGN_FLAG));
+                data.push_back(std::byte(_shortUID));
+				break;
+            default:
+                CUAssertLog(false, "Serializing invalid game state event type");
         }
-        data.push_back(std::byte(_shortUID));
         return data;
     }
 
@@ -162,8 +180,17 @@ public:
                 break;
             case GAME_RESUME_FLAG:
                 _type = GAME_RESUME;
+                break;
+            case CLIENT_RDY_FLAG:
+				_type = CLIENT_RDY;
+				break;
+            case UID_ASSIGN_FLAG:
+                _type = UID_ASSIGN;
+                _shortUID = (Uint8)data[1];
+                break;
+            default:
+                CUAssertLog(false, "Deserializing game state event type");
         }
-        _shortUID = (Uint8)data[1];
     }
 };
 
@@ -201,7 +228,7 @@ public:
      *
      * @param obj the obstacle reference to add, duplicate obstacles would be ignored
      */
-    void addObj(std::shared_ptr<physics2::Obstacle>& obj){
+    void addObj(const std::shared_ptr<physics2::Obstacle>& obj){
         if(_objSet.count(obj->_id))
             return;
         
@@ -221,7 +248,7 @@ public:
 		return _syncList;
 	}
 
-    static std::shared_ptr<NetEvent> alloc() {
+    static std::shared_ptr<PhysSyncEvent> alloc() {
         return std::make_shared<PhysSyncEvent>();
     }
     

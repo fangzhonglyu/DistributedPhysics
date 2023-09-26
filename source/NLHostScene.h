@@ -13,6 +13,7 @@
 #ifndef __NL_HOST_SCENE_H__
 #define __NL_HOST_SCENE_H__
 #include <cugl/cugl.h>
+#include "CUNetEventController.h"
 #include <vector>
 
 #define PING_TEST_COUNT 5
@@ -46,7 +47,7 @@ protected:
     /** The asset manager for this scene. */
     std::shared_ptr<cugl::AssetManager> _assets;
     /** The network connection (as made by this scene) */
-    std::shared_ptr<cugl::net::NetcodeConnection> _network;
+    std::shared_ptr<NetEventController> _network;
 
     /** The menu button for starting a game */
     std::shared_ptr<cugl::scene2::Button> _startgame;
@@ -109,7 +110,7 @@ public:
      *
      * @return true if the controller is initialized properly, false otherwise.
      */
-    bool init(const std::shared_ptr<cugl::AssetManager>& assets);
+    bool init(const std::shared_ptr<cugl::AssetManager>& assets, std::shared_ptr<NetEventController> network);
     
     /**
      * Sets whether the scene is currently active
@@ -121,19 +122,6 @@ public:
      * @param value whether the scene is currently active
      */
     virtual void setActive(bool value) override;
-    
-    /**
-     * Returns the network connection (as made by this scene)
-     *
-     * This value will be reset every time the scene is made active.
-     * In addition, this method will return nullptr if {@link #disconnect}
-     * has been called.
-     *
-     * @return the network connection (as made by this scene)
-     */
-    std::shared_ptr<cugl::net::NetcodeConnection> getConnection() const {
-        return _network;
-    }
 
     /**
      * Returns the scene status.
@@ -161,7 +149,7 @@ public:
      * Since the network controller is a smart pointer, it is only fully disconnected
      * when ALL scenes have been disconnected.
      */
-    void disconnect() { _network = nullptr; }
+    void disconnect() { _network->disconnect(); }
 
 private:
     /**
@@ -211,17 +199,6 @@ private:
      * @param data      The data received
      */
     void processData(const std::string source, const std::vector<std::byte>& data);
-
-    /**
-     * Checks that the network connection is still active.
-     *
-     * Even if you are not sending messages all that often, you need to be calling
-     * this method regularly. This method is used to determine the current state
-     * of the scene.
-     *
-     * @return true if the network connection is still active.
-     */
-    bool checkConnection();
     
     /**
      * Starts the game.
@@ -231,8 +208,6 @@ private:
      * players.
      */
     void startGame();
-    
-    void sendPingTest();
     
 };
 

@@ -15,6 +15,7 @@
 #include <vector>
 #include <concepts>
 #include "CUNetEvent.h"
+#include "Interpolator.h"
 
 class NetEventController {
 public:
@@ -25,6 +26,10 @@ public:
         CONNECTING,
         /** Connected to server */
         CONNECTED,
+        /** session is started */
+        INSESSION,
+        /** Ready for game start */
+        READY,
         /** Game is in progress */
         INGAME,
         /** Error in connection */
@@ -33,16 +38,22 @@ public:
 
 protected:
     std::unordered_map<std::type_index, Uint8> _eventTypeMap;
-    std::vector<std::shared_ptr<NetEvent>> _eventTypeVector;
+    std::vector<std::function<std::shared_ptr<NetEvent>()>> _allocFuncVector;
 
     /** The asset manager for the controller. */
     std::shared_ptr<cugl::AssetManager> _assets;
+    
+    Uint8 _shortUUID;
+
+    Uint8 _numReady;
 
     /** The network configuration */
     cugl::net::NetcodeConfig _config;
 
     /** The network connection */
     std::shared_ptr<cugl::net::NetcodeConnection> _network;
+
+    NetPhysicsController _physController;
 
     /** The network status */
     Status _status;
@@ -66,6 +77,8 @@ protected:
     void processReceivedData();
 
     void processReceivedEvent(const std::shared_ptr<NetEvent>& e);
+
+    void processGameStateEvent(const std::shared_ptr<GameStateEvent>& e);
     
     void sendQueuedOutData();
     
@@ -109,30 +122,39 @@ public:
     void disconnect();
 
     bool checkConnection();
+    
+    void initPhysics(std::shared_ptr<cugl::physics2::ObstacleWorld> world) {
+		_physController.init(world);
+	}
 
-    std::string getRoomID() const {
-        return _roomid;
-    }
+    std::string getRoomID() const { return _roomid; }
 
     bool isHost() const {
         return _isHost;
     }
 
-    Status getStatus() const {
-        return _status;
+    int getNumPlayers() const {
+        if (_network) {
+            return _network->getNumPlayers();
+        }
+        return 1;
     }
+
+    Status getStatus() const { return _status; }
     
     void startGame();
+
+    void markReady();
 
     void updateNet();
 
     //template that must be of type NetEvent
     template <typename T>
-    void attachEventType() {
-        //CUAssertLog(std::is_base_of<NetEvent, T>, "Attached type is not a derived Class of NetEvent.");
+    void attachEventType(std::function<std::shared_ptr<NetEvent>()> allocFunc) {
+        //CUAssertLog(std::is_base_of_v<NetEvent, T>, "Attached type is not a derived Class of NetEvent.");
         if (!_eventTypeMap.count(std::type_index(typeid(T)))) {
-            _eventTypeVector.push_back(std::make_shared<T>());
-            _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _eventTypeVector.size() - 1));
+            _allocFuncVector.push_back(allocFunc);
+            _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _allocFuncVector.size() - 1));
         }
     }
 

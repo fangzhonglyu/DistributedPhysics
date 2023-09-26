@@ -13,7 +13,9 @@
 
 using namespace cugl;
 
-void Interpolator::processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& event) {
+void NetPhysicsController::processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& event) {
+    if (event->getSourceId() == "")
+        return;
     const std::vector<ObjParam>& params = event->getSyncList();
     for (auto it = params.begin(); it != params.end(); it++) {
         ObjParam param = (*it);
@@ -46,7 +48,7 @@ void Interpolator::processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& ev
     }
 }
 
-void Interpolator::addObject(std::shared_ptr<physics2::Obstacle> obj, std::shared_ptr<targetParam> param){
+void NetPhysicsController::addObject(std::shared_ptr<physics2::Obstacle> obj, std::shared_ptr<targetParam> param){
     if(_cache.count(obj)){
         #if ITPR_METHOD == 1
         return;
@@ -63,11 +65,43 @@ void Interpolator::addObject(std::shared_ptr<physics2::Obstacle> obj, std::share
     _itprCount ++;
 }
 
-bool Interpolator::contains(std::shared_ptr<physics2::Obstacle> obj){
+bool NetPhysicsController::contains(std::shared_ptr<physics2::Obstacle> obj){
     return _cache.count(obj) > 0;
 }
 
-void Interpolator::fixedUpdate(){
+std::shared_ptr<PhysSyncEvent> NetPhysicsController::packPhysSync() {
+    auto event = PhysSyncEvent::alloc();
+    std::vector<std::string> velQueue;
+    for (auto it = _world->getIdToObj().begin(); it != _world->getIdToObj().end(); it++) {
+        std::string id = (*it).first;
+        auto obj = (*it).second;
+        velQueue.push_back(id);
+    }
+
+    std::sort(velQueue.begin(), velQueue.end(), [this](std::string const& l, std::string const& r) {
+        return _world->getIdToObj().at(l)->getLinearVelocity().length() > _world->getIdToObj().at(r)->getLinearVelocity().length();
+        ; });
+
+    for (size_t i = 0; i < 20; i++) {
+        event->addObj(_world->getObstacles()[_objRotation]);
+
+        /*for (auto it = _collisionMap[id].begin(); it != _collisionMap[id].end(); it++) {
+            event->addObj(*it);
+        }*/
+    }
+
+    for (size_t i = 0; i < 20; i++) {
+        event->addObj(_world->getIdToObj().at(velQueue[i]));
+
+        /*for (auto it = _collisionMap[id].begin(); it != _collisionMap[id].end(); it++) {
+           event->addObj(*it);
+        }*/
+    }
+
+    return event;
+}
+
+void NetPhysicsController::fixedUpdate(){
     for(auto it = _cache.begin(); it != _cache.end(); it++){
         auto obj = it->first;
         std::shared_ptr<targetParam> param = it->second;
@@ -130,6 +164,6 @@ void Interpolator::fixedUpdate(){
     }
 }
 
-float Interpolator::interpolate(int stepsLeft, float target, float source){
+float NetPhysicsController::interpolate(int stepsLeft, float target, float source){
     return (target-source)/stepsLeft+source;
 }

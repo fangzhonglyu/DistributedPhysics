@@ -19,6 +19,7 @@
 #include "NLMenuScene.h"
 #include "NLClientScene.h"
 #include "NLHostScene.h"
+#include "CUNetEventController.h"
 
 /**
  * This class represents the application root for the ship demo.
@@ -38,6 +39,8 @@ protected:
     std::shared_ptr<cugl::SpriteBatch> _batch;
     /** The global asset manager */
     std::shared_ptr<cugl::AssetManager> _assets;
+
+    std::shared_ptr<NetEventController> _network;
     
     // Player modes
     /** The primary controller for the game world */
@@ -53,8 +56,6 @@ protected:
     
     /** Whether or not we have finished loading all assets */
     bool _loaded;
-    
-    NetworkController _network;
     
     Status _status;
     
