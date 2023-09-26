@@ -152,6 +152,7 @@ void HostScene::setActive(bool value) {
         } else {
             _gameid->setText("");
             _startgame->deactivate();
+            updateText(_startgame, "INACTIVE");
             _backout->deactivate();
             // If any were pressed, reset them
             _startgame->setDown(false);
@@ -204,5 +205,6 @@ void HostScene::update(float timestep) {
 	}
     if (_network->getStatus() == NetEventController::Status::INSESSION) {
         _startgame->deactivate();
+        updateText(_startgame, "Starting");
     }
 }
