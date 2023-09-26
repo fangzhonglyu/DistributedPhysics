@@ -2,3 +2,5 @@ build
 *.DS_Store
 *.plist
 .vs
+assets/log_host.txt
+assets/log_client.txt
