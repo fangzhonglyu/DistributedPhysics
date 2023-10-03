@@ -199,7 +199,7 @@ public:
  * The struct for an object snapshot. Contains the object's global Id, position, and velocity.
  */
 typedef struct{
-    std::string objId;
+    Uint64 objId;
     float x;
     float y;
     float vx;
@@ -214,7 +214,7 @@ typedef struct{
 class PhysSyncEvent : public NetEvent{
 private:
     /** The set of objectIds of all objects added to be serialized. Used to prevent duplicate objects. */
-    std::unordered_set<std::string> _objSet;
+    std::unordered_set<Uint64> _objSet;
     /** The serializer for converting basic types to byte vectors. */
     net::NetcodeSerializer _serializer;
     /** The deserializer for converting byte vectors to basic types. */
@@ -229,7 +229,7 @@ public:
      *
      * @param obj the obstacle reference to add, duplicate obstacles would be ignored
      */
-    void addObj(const std::shared_ptr<physics2::Obstacle>& obj, std::string id){
+    void addObj(const std::shared_ptr<physics2::Obstacle>& obj, Uint64 id){
         if(_objSet.count(id))
             return;
         
@@ -258,10 +258,10 @@ public:
      */
     std::vector<std::byte> serialize() override {
         _serializer.reset();
-        _serializer.writeUint32((Uint32)_syncList.size());
+        _serializer.writeUint64((Uint64)_syncList.size());
         for(auto it = _syncList.begin(); it != _syncList.end(); it++){
             ObjParam& obj = (*it);
-            _serializer.writeString(obj.objId);
+            _serializer.writeUint64(obj.objId);
             _serializer.writeFloat(obj.x);
             _serializer.writeFloat(obj.y);
             _serializer.writeFloat(obj.vx);
@@ -281,10 +281,10 @@ public:
         
         _deserializer.reset();
         _deserializer.receive(data);
-        Uint32 numObjs = _deserializer.readUint32();
+        Uint64 numObjs = _deserializer.readUint64();
         for(size_t i = 0; i < numObjs; i++){
             ObjParam param;
-            param.objId = _deserializer.readString();
+            param.objId = _deserializer.readUint64();
             param.x = _deserializer.readFloat();
             param.y = _deserializer.readFloat();
             param.vx = _deserializer.readFloat();

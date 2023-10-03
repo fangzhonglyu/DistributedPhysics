@@ -19,7 +19,7 @@ void NetPhysicsController::processPhysSyncEvent(const std::shared_ptr<PhysSyncEv
     const std::vector<ObjParam>& params = event->getSyncList();
     for (auto it = params.begin(); it != params.end(); it++) {
         ObjParam param = (*it);
-        CUAssertLog(_world->getIdToObj().count(param.objId), "Invalid PhysSyncEvent, obj %s not found.",param.objId.c_str());
+        CUAssertLog(_world->getIdToObj().count(param.objId), "Invalid PhysSyncEvent, obj %u not found.",param.objId);
             
         auto obj = _world->getIdToObj().at(param.objId);
         float x = param.x;            
@@ -71,14 +71,14 @@ bool NetPhysicsController::contains(std::shared_ptr<physics2::Obstacle> obj){
 
 std::shared_ptr<PhysSyncEvent> NetPhysicsController::packPhysSync() {
     auto event = PhysSyncEvent::alloc();
-    std::vector<std::string> velQueue;
+    std::vector<Uint64> velQueue;
     for (auto it = _world->getIdToObj().begin(); it != _world->getIdToObj().end(); it++) {
-        std::string id = (*it).first;
+        Uint64 id = (*it).first;
         auto obj = (*it).second;
         velQueue.push_back(id);
     }
 
-    std::sort(velQueue.begin(), velQueue.end(), [this](std::string const& l, std::string const& r) {
+    std::sort(velQueue.begin(), velQueue.end(), [this](Uint64 const& l, Uint64 const& r) {
         return _world->getIdToObj().at(l)->getLinearVelocity().length() > _world->getIdToObj().at(r)->getLinearVelocity().length();
         ; });
 

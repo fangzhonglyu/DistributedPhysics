@@ -47,7 +47,7 @@ protected:
     
     long _stepSum;
 
-    Uint32 _objRotation;
+    Uint64 _objRotation;
 
     std::shared_ptr<cugl::physics2::ObstacleWorld> _world;
     

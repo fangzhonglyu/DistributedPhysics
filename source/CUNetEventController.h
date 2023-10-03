@@ -140,7 +140,7 @@ public:
 
     int getNumPlayers() const {
         if (_network) {
-            return _network->getNumPlayers();
+            return (int)(_network->getNumPlayers());
         }
         return 1;
     }
