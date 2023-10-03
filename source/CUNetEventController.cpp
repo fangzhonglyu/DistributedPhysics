@@ -16,8 +16,7 @@ using namespace cugl::net;
 
 bool NetEventController::init(const std::shared_ptr<cugl::AssetManager>& assets) {
     // Attach the primitive event types for deserialization
-	attachEventType<PhysSyncEvent>(PhysSyncEvent::alloc);
-    attachEventType<GameStateEvent>(GameStateEvent::alloc);
+    attachEventType<GameStateEvent>();
 
     // Configure the NetcodeConnection
     _assets = assets;
@@ -32,7 +31,7 @@ void NetEventController::startGame() {
     if (_isHost && _status == Status::CONNECTED) {
         _network->startSession();
         auto players = _network->getPlayers();
-        Uint8 shortUID = 1;
+        Uint32 shortUID = 1;
         for (auto it = players.begin(); it != players.end(); it++) {
             _network->sendTo((*it), wrap(GameStateEvent::allocUIDAssign(shortUID++)));
         }
@@ -200,11 +199,11 @@ void NetEventController::pushOutEvent(const std::shared_ptr<NetEvent>& e) {
 }
 
 std::shared_ptr<NetEvent> NetEventController::unwrap(const std::vector<std::byte>& data, std::string source) {
-    CUAssertLog(data.size() >= MIN_MSG_LENGTH && (Uint8)data[0] < _allocFuncVector.size(), "Unwrapping invalid event");
+    CUAssertLog(data.size() >= MIN_MSG_LENGTH && (Uint8)data[0] < _newEventVector.size(), "Unwrapping invalid event");
     LWDeserializer deserializer;
     deserializer.receive(data);
     Uint8 eventType = (Uint8)deserializer.readByte();
-    std::shared_ptr<NetEvent> e = _allocFuncVector[eventType]();
+    std::shared_ptr<NetEvent> e = _newEventVector[eventType]->newEvent();
     Uint64 eventTimeStamp = deserializer.readUint64();
     Uint64 receiveTimeStamp =  _appRef->getUpdateCount()-_startGameTimeStamp;
 	e->setMetaData(eventTimeStamp, receiveTimeStamp, source);

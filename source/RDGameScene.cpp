@@ -494,7 +494,6 @@ void GameScene::populate(bool isInit) {
         _cannon1->setDebugColor(DYNAMIC_COLOR);
         _cannon1->setSensor(true);
         _cannon1->setCannonNode(_cannon1Node);
-        _cannon1->_id = 1111111111;
             
         image  = _assets->get<Texture>(ROCK_TEXTURE);
         _cannon2Node = scene2::PolygonNode::allocWithTexture(image);
@@ -507,7 +506,6 @@ void GameScene::populate(bool isInit) {
         _cannon2->setDebugColor(DYNAMIC_COLOR);
         _cannon2->setSensor(true);
         _cannon2->setCannonNode(_cannon2Node);
-        _cannon2->_id = 1111111111;
     }
     
     if(isInit){
@@ -963,12 +961,12 @@ void GameScene::update(float dt) {
  * @param  contact  The two bodies that collided
  */
 void GameScene::beginContact(b2Contact* contact) {
-    b2Body *body1 = contact->GetFixtureA()->GetBody();
-    b2Body *body2 = contact->GetFixtureB()->GetBody();
-    
-    std::shared_ptr<physics2::Obstacle>& obj1= reinterpret_cast<std::shared_ptr<physics2::Obstacle>&>(body1->GetUserData().pointer);
-    
-    std::shared_ptr<physics2::Obstacle>& obj2= reinterpret_cast<std::shared_ptr<physics2::Obstacle>&>(body2->GetUserData().pointer);
+//    b2Body *body1 = contact->GetFixtureA()->GetBody();
+//    b2Body *body2 = contact->GetFixtureB()->GetBody();
+//
+//    std::shared_ptr<physics2::Obstacle>& obj1= reinterpret_cast<std::shared_ptr<physics2::Obstacle>&>(body1->GetUserData().pointer);
+//
+//    std::shared_ptr<physics2::Obstacle>& obj2= reinterpret_cast<std::shared_ptr<physics2::Obstacle>&>(body2->GetUserData().pointer);
 }
 
 /**

@@ -38,7 +38,7 @@ public:
 
 protected:
     std::unordered_map<std::type_index, Uint8> _eventTypeMap;
-    std::vector<std::function<std::shared_ptr<NetEvent>()>> _allocFuncVector;
+    std::vector<std::shared_ptr<NetEvent>> _newEventVector;
 
     /** The asset manager for the controller. */
     std::shared_ptr<cugl::AssetManager> _assets;
@@ -130,6 +130,7 @@ public:
     
     void initPhysics(std::shared_ptr<cugl::physics2::ObstacleWorld> world) {
 		_physController.init(world);
+        attachEventType<PhysSyncEvent>();
 	}
 
     std::string getRoomID() const { return _roomid; }
@@ -155,11 +156,11 @@ public:
 
     //template that must be of type NetEvent
     template <typename T>
-    void attachEventType(std::function<std::shared_ptr<NetEvent>()> allocFunc) {
+    void attachEventType() {
         //CUAssertLog(std::is_base_of_v<NetEvent, T>, "Attached type is not a derived Class of NetEvent.");
         if (!_eventTypeMap.count(std::type_index(typeid(T)))) {
-            _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _allocFuncVector.size()));
-            _allocFuncVector.push_back(allocFunc);
+            _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _newEventVector.size()));
+            _newEventVector.push_back(std::make_shared<T>());
         }
     }
 

@@ -39,7 +39,8 @@ private:
     friend class NetEventController;
     
 public:
-    static std::shared_ptr<NetEvent> alloc() {
+    
+    virtual std::shared_ptr<NetEvent> newEvent(){
         return std::make_shared<NetEvent>();
     };
     /**
@@ -87,10 +88,14 @@ public:
     };
 protected:
     Type _type;
-    Uint8 _shortUID;
+    Uint32 _shortUID;
 
 public:
     static std::shared_ptr<GameStateEvent> alloc() {
+        return std::make_shared<GameStateEvent>();
+    }
+    
+    std::shared_ptr<NetEvent> newEvent() override {
         return std::make_shared<GameStateEvent>();
     }
 
@@ -253,6 +258,10 @@ public:
         return std::make_shared<PhysSyncEvent>();
     }
     
+    std::shared_ptr<NetEvent> newEvent() override{
+        return std::make_shared<PhysSyncEvent>();
+    }
+    
     /**
      * This method takes the current list of snapshots and serializes them to a byte vector.
      */
@@ -296,6 +305,53 @@ public:
     }
 };
 
+#define OBJ_CREATION_FLAG 200
+#define OBJ_DELETION_FLAG 201
+
+class PhysObjEvent : public NetEvent{
+public:
+    enum Type
+    {
+        OBJ_CREATION,
+        OBJ_DELETION
+    };
+
+protected:
+    Type _type;
+    Uint32 _obstacleFactId;
+    Uint64 _objId;
+    std::shared_ptr<std::vector<std::byte>> _packedParam;
+
+public:
+    
+    void initCreation(Uint32 obstacleFactId, Uint64 objId, std::shared_ptr<std::vector<std::byte>> packedParam){
+        _type = OBJ_CREATION;
+        _obstacleFactId = obstacleFactId;
+        _objId = objId;
+        _packedParam = packedParam;
+    }
+    
+    void initDeletion(Uint64 objId){
+        _type = OBJ_DELETION;
+        _objId = objId;
+    }
+    
+    static std::shared_ptr<PhysObjEvent> allocCreation(Uint32 obstacleFactId, Uint64 objId, std::shared_ptr<std::vector<std::byte>> packedParam){
+        auto e = std::make_shared<PhysObjEvent>();
+        e->initCreation(obstacleFactId, objId, packedParam);
+        return e;
+    }
+    
+    static std::shared_ptr<PhysObjEvent> allocDeletion(Uint64 objId){
+        auto e = std::make_shared<PhysObjEvent>();
+        e->initDeletion(objId);
+        return e;
+    }
+    
+    std::shared_ptr<NetEvent> newEvent() override {
+        return std::make_shared<PhysObjEvent>();
+    }
+};
 
 
 #endif /* __CU_NET_EVENT_H__ */
