@@ -24,6 +24,7 @@ bool NetEventController::init(const std::shared_ptr<cugl::AssetManager>& assets)
     _config.set(json);
     _status = Status::IDLE;
     _appRef = Application::get();
+    _physController = NetPhysicsController::alloc();
     return true;
 }
 
@@ -108,7 +109,8 @@ bool NetEventController::checkConnection() {
 void NetEventController::processReceivedEvent(const std::shared_ptr<NetEvent>& e) {
     if (_status == INGAME){
         if (auto phys = std::dynamic_pointer_cast<PhysSyncEvent>(e)) {
-			_physController.processPhysSyncEvent(phys);
+            if(_physEnabled)
+			    _physController->processPhysSyncEvent(phys);
             //_reservedInEventQueue.push(phys);
 		}
         else {
@@ -169,11 +171,11 @@ void NetEventController::updateNet() {
         checkConnection();
         processReceivedData();
         
-        if (_status == INGAME) {
+        if (_status == INGAME && _physEnabled) {
             if (_isHost) {
-                pushOutEvent(_physController.packPhysSync());
+                pushOutEvent(_physController->packPhysSync());
             }
-			_physController.fixedUpdate();
+			_physController->fixedUpdate();
 		}
 
         sendQueuedOutData();

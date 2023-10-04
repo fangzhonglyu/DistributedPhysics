@@ -47,13 +47,15 @@ protected:
 
     Uint8 _numReady;
 
+    bool _physEnabled;
+
     /** The network configuration */
     cugl::net::NetcodeConfig _config;
 
     /** The network connection */
     std::shared_ptr<cugl::net::NetcodeConnection> _network;
 
-    NetPhysicsController _physController;
+    std::shared_ptr<NetPhysicsController> _physController;
 
     /** The network status */
     Status _status;
@@ -110,7 +112,9 @@ public:
         _numReady{ 0 },
         _roomid{ "" },
         _assets{ nullptr },
-        _network{ nullptr }
+        _network{ nullptr },
+        _physController { nullptr },
+        _physEnabled{ false }
     {};
     
     bool init(const std::shared_ptr<cugl::AssetManager>& assets);
@@ -127,11 +131,19 @@ public:
     void disconnect();
 
     bool checkConnection();
+
+    void initPhysics(std::shared_ptr<cugl::physics2::ObstacleWorld>& world) {
+        initPhysics(world,nullptr);
+    }
     
-    void initPhysics(std::shared_ptr<cugl::physics2::ObstacleWorld> world) {
-		_physController.init(world);
+    void initPhysics(std::shared_ptr<cugl::physics2::ObstacleWorld>& world, std::function<void(std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>)> linkSceneToObsFunc) {
+        _physEnabled = true;
+        _physController->init(world,linkSceneToObsFunc);
         attachEventType<PhysSyncEvent>();
+        attachEventType<PhysObjEvent>();
 	}
+
+    std::shared_ptr<NetPhysicsController> getPhysController() { return _physController; }
 
     std::string getRoomID() const { return _roomid; }
 
@@ -157,8 +169,9 @@ public:
     //template that must be of type NetEvent
     template <typename T>
     void attachEventType() {
-        //CUAssertLog(std::is_base_of_v<NetEvent, T>, "Attached type is not a derived Class of NetEvent.");
         if (!_eventTypeMap.count(std::type_index(typeid(T)))) {
+            T t;
+            CUAssertLog(std::dynamic_cast<NetEvent>(&t), "Attached type is not a derived Class of NetEvent.")
             _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _newEventVector.size()));
             _newEventVector.push_back(std::make_shared<T>());
         }

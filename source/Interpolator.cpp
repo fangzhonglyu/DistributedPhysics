@@ -13,9 +13,28 @@
 
 using namespace cugl;
 
+void NetPhysicsController::processPhysObjEvent(const std::shared_ptr<PhysObjEvent>& event) {
+    if (event->getSourceId() == "")
+        return; // Ignore physic syncs from self.
+    CUAssertLog(event->getObstacleFactId() < _obstacleFacts.size(), "Unknown object Factory %u", event->getObstacleFactId());
+    auto pair = _obstacleFacts[event->getObstacleFactId()]->createObstacle(*event->getPackedParam());
+    _world->addObstacle(pair.first, event->getObjId());
+    if (_linkSceneToObsFunc)
+        _linkSceneToObsFunc(pair.first, pair.second);
+}
+
+void NetPhysicsController::addSharedObstacle(Uint32 factoryID, std::shared_ptr<std::vector<std::byte>> bytes) {
+    CUAssertLog(factoryID < _obstacleFacts.size(), "Unknown object Factory %u", factoryID);
+    auto pair = _obstacleFacts[factoryID]->createObstacle(*bytes);
+    Uint64 objId = _world->addObstacle(pair.first);
+    if (_linkSceneToObsFunc)
+		_linkSceneToObsFunc(pair.first, pair.second);
+    auto e = PhysObjEvent::allocCreation(objId, factoryID, bytes);
+}
+
 void NetPhysicsController::processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& event) {
     if (event->getSourceId() == "")
-        return;
+        return; // Ignore physic syncs from self.
     const std::vector<ObjParam>& params = event->getSyncList();
     for (auto it = params.begin(); it != params.end(); it++) {
         ObjParam param = (*it);
@@ -44,11 +63,11 @@ void NetPhysicsController::processPhysSyncEvent(const std::shared_ptr<PhysSyncEv
         target->P3 = Vec2(x, y);
         target->P2 = target->P3 - target->targetVel / 10.f;
 
-        addObject(obj, target);
+        addSyncObject(obj, target);
     }
 }
 
-void NetPhysicsController::addObject(std::shared_ptr<physics2::Obstacle> obj, std::shared_ptr<targetParam> param){
+void NetPhysicsController::addSyncObject(std::shared_ptr<physics2::Obstacle> obj, std::shared_ptr<targetParam> param){
     if(_cache.count(obj)){
         #if ITPR_METHOD == 1
         return;
@@ -65,7 +84,7 @@ void NetPhysicsController::addObject(std::shared_ptr<physics2::Obstacle> obj, st
     _itprCount ++;
 }
 
-bool NetPhysicsController::contains(std::shared_ptr<physics2::Obstacle> obj){
+bool NetPhysicsController::isInSync(std::shared_ptr<physics2::Obstacle> obj){
     return _cache.count(obj) > 0;
 }
 

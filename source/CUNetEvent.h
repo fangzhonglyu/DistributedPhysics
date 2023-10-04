@@ -13,6 +13,7 @@
 #include <cugl/cugl.h>
 #include <cstdint>
 #include <vector>
+#include "CULWSerializer.h"
 
 using namespace cugl;
 
@@ -322,7 +323,18 @@ protected:
     Uint64 _objId;
     std::shared_ptr<std::vector<std::byte>> _packedParam;
 
+    LWSerializer _serializer;
+    LWDeserializer _deserializer;
+
+    static std::vector<std::shared_ptr<ObstacleFactory>> _obstacleFacts;
+
 public:
+
+    Uint32 getObstacleFactId() const { return _obstacleFactId; }
+
+    Uint64 getObjId() const { return _objId; }
+
+    const std::shared_ptr<std::vector<std::byte>> getPackedParam() const { return _packedParam; }
     
     void initCreation(Uint32 obstacleFactId, Uint64 objId, std::shared_ptr<std::vector<std::byte>> packedParam){
         _type = OBJ_CREATION;
@@ -351,6 +363,24 @@ public:
     std::shared_ptr<NetEvent> newEvent() override {
         return std::make_shared<PhysObjEvent>();
     }
+
+    std::vector<std::byte> serialize() override {
+        _serializer.reset();
+        _serializer.writeUint32(_obstacleFactId);
+        _serializer.writeUint64(_objId);
+        _serializer.writeByteVector(*_packedParam);
+        return _serializer.serialize();
+    }
+
+    void deserialize(const std::vector<std::byte>& data) override {
+        if (data.size() < 4)
+            return;
+
+        _deserializer.reset();
+        _deserializer.receive(data);
+        
+    }
+
 };
 
 

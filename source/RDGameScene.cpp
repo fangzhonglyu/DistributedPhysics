@@ -581,7 +581,7 @@ void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
             weak->setPosition(pos*_scale);
             weak->setAngle(angle);
             Color4 c = weak->getColor();
-            if(_itpr.contains(obj)){
+            if(_itpr.isInSync(obj)){
                 if(c.g >= 10)
                     weak->setColor(c.subtract(0, 5, 5));
             }
@@ -743,7 +743,7 @@ void GameScene::processState(netdata data){
         //param.P2 = param.P3;
         param.P2 = param.P3;//-param.targetVel/10.f;
         std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
-        _itpr.addObject(obj, paramP);
+        _itpr.addSyncObject(obj, paramP);
     }
 }
 
