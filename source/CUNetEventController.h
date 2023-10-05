@@ -132,15 +132,19 @@ public:
 
     bool checkConnection();
 
-    void initPhysics(std::shared_ptr<cugl::physics2::ObstacleWorld>& world) {
-        initPhysics(world,nullptr);
+    void enablePhysics(std::shared_ptr<cugl::physics2::ObstacleWorld>& world) {
+        enablePhysics(world,nullptr);
     }
     
-    void initPhysics(std::shared_ptr<cugl::physics2::ObstacleWorld>& world, std::function<void(std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>)> linkSceneToObsFunc) {
+    void enablePhysics(std::shared_ptr<cugl::physics2::ObstacleWorld>& world, std::function<void(const std::shared_ptr<physics2::Obstacle>&, const std::shared_ptr<scene2::SceneNode>&)> linkSceneToObsFunc) {
         _physEnabled = true;
         _physController->init(world,linkSceneToObsFunc);
         attachEventType<PhysSyncEvent>();
         attachEventType<PhysObjEvent>();
+	}
+
+    void disablePhysics() {
+		_physEnabled = false;
 	}
 
     std::shared_ptr<NetPhysicsController> getPhysController() { return _physController; }
@@ -170,8 +174,8 @@ public:
     template <typename T>
     void attachEventType() {
         if (!_eventTypeMap.count(std::type_index(typeid(T)))) {
-            T t;
-            CUAssertLog(std::dynamic_cast<NetEvent>(&t), "Attached type is not a derived Class of NetEvent.")
+            //T t;
+            //CUAssertLog(std::dynamic_cast<NetEvent>(&t), "Attached type is not a derived Class of NetEvent.");
             _eventTypeMap.insert(std::make_pair(std::type_index(typeid(T)), _newEventVector.size()));
             _newEventVector.push_back(std::make_shared<T>());
         }

@@ -36,6 +36,50 @@
 #include "RDNetwork.h"
 #include "Interpolator.h"
 #include "CUNetEventController.h"
+
+class CrateFactory : public ObstacleFactory {
+public:
+    std::shared_ptr<AssetManager> _assets;
+    std::mt19937 _rand;
+    LWSerializer _serializer;
+    LWDeserializer _deserializer;
+
+    static std::shared_ptr<CrateFactory> alloc(std::shared_ptr<AssetManager>& assets) {
+        auto f = std::make_shared<CrateFactory>();
+        f->init(assets);
+        return f;
+    };
+
+    void init(std::shared_ptr<AssetManager>& assets) {
+        _assets = assets;
+        _rand.seed(0xdeadbeef);
+    }
+
+    std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> createObstacle(Vec2 pos, float scale);
+
+    /**
+     * Deserialize the params and call normal function.
+     */
+    std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> createObstacle(const std::vector<std::byte>& params) override {
+        _deserializer.reset();
+        _deserializer.receive(params);
+        Vec2 pos = Vec2(_deserializer.readFloat(), _deserializer.readFloat());
+        float scale = _deserializer.readFloat();
+        return createObstacle(pos, scale);
+    }
+
+    /**
+     * Serialize the params
+     */
+    std::shared_ptr<std::vector<std::byte>> serializeParams(Vec2 pos, float scale) {
+        _serializer.reset();
+        _serializer.writeFloat(pos.x);
+        _serializer.writeFloat(pos.y);
+        _serializer.writeFloat(scale);
+        return std::make_shared<std::vector<std::byte>>(_serializer.serialize());
+    }
+};
+
 /**
  * This class is the primary gameplay constroller for the demo.
  *
@@ -45,7 +89,7 @@
  */
 class GameScene : public cugl::Scene2 {
 protected:
-    /** The asset manager for this game mode. */
+
     std::shared_ptr<cugl::AssetManager> _assets;
     
     // CONTROLLERS
@@ -66,6 +110,11 @@ protected:
     std::shared_ptr<cugl::physics2::ObstacleWorld> _world;
     /** The scale between the physics world and the screen (MUST BE UNIFORM) */
     float _scale;
+
+    std::mt19937 _rand;
+
+    std::shared_ptr<CrateFactory> _crateFact;
+    Uint32 _factId;
 
     // Physics objects for the game
     /** Reference to the goalDoor (for collision detection) */
@@ -104,8 +153,6 @@ protected:
     Uint64 _bound;
     
     std::shared_ptr<cugl::TextWriter> _writer;
-    
-    std::mt19937 _rand;
     
     std::queue<Uint32> _objQueue;
     
@@ -154,6 +201,9 @@ protected:
      */
     void addObstacle(const std::shared_ptr<cugl::physics2::Obstacle>& obj, 
                      const std::shared_ptr<cugl::scene2::SceneNode>& node);
+
+    void linkSceneToObs(const std::shared_ptr<cugl::physics2::Obstacle>& obj,
+        const std::shared_ptr<cugl::scene2::SceneNode>& node);
     
     void addObstacleAlt(const std::shared_ptr<cugl::physics2::Obstacle>& obj,
                      const std::shared_ptr<cugl::scene2::SceneNode>& node);

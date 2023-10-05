@@ -29,7 +29,7 @@ void NetPhysicsController::addSharedObstacle(Uint32 factoryID, std::shared_ptr<s
     Uint64 objId = _world->addObstacle(pair.first);
     if (_linkSceneToObsFunc)
 		_linkSceneToObsFunc(pair.first, pair.second);
-    auto e = PhysObjEvent::allocCreation(objId, factoryID, bytes);
+    _outEvents.push_back(PhysObjEvent::allocCreation(factoryID,objId,bytes));
 }
 
 void NetPhysicsController::processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& event) {
@@ -38,7 +38,9 @@ void NetPhysicsController::processPhysSyncEvent(const std::shared_ptr<PhysSyncEv
     const std::vector<ObjParam>& params = event->getSyncList();
     for (auto it = params.begin(); it != params.end(); it++) {
         ObjParam param = (*it);
-        CUAssertLog(_world->getIdToObj().count(param.objId), "Invalid PhysSyncEvent, obj %llu not found.",param.objId);
+        if(!_world->getIdToObj().count(param.objId))
+            continue;
+        //CUAssertLog(_world->getIdToObj().count(param.objId), "Invalid PhysSyncEvent, obj %llu not found.",param.objId);
             
         auto obj = _world->getIdToObj().at(param.objId);
         float x = param.x;            

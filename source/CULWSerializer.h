@@ -8,6 +8,10 @@
 #ifndef __CU_LW_SERIALIZER_H__
 #define __CU_LW_SERIALIZER_H__
 
+#include <cugl/cugl.h>
+
+using namespace cugl;
+
 class LWSerializer{
 private:
     std::vector<std::byte> _data;

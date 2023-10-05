@@ -28,19 +28,7 @@ typedef struct{
     Uint64 numI;
 } targetParam;
 
-class ObstacleFactory {
-public:
-    static std::shared_ptr<ObstacleFactory> alloc() {
-        return std::make_shared<ObstacleFactory>();
-    };
 
-    /**
-     * Serialize any paramater that the event contains to a vector of bytes.
-     */
-    virtual std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> createObstacle(const std::vector<std::byte>& bytes) {
-        return std::make_pair(std::make_shared<physics2::BoxObstacle>(), std::make_shared<scene2::SceneNode>());
-    }
-};
 
 class NetPhysicsController {
     
@@ -61,9 +49,11 @@ protected:
 
     std::vector<std::shared_ptr<ObstacleFactory>> _obstacleFacts;
 
-    std::function<void(std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>)> _linkSceneToObsFunc;
+    std::function<void(const std::shared_ptr<physics2::Obstacle>&, const std::shared_ptr<scene2::SceneNode>&)> _linkSceneToObsFunc;
 
     float interpolate(int stepsLeft, float target, float source);
+
+    std::vector<std::shared_ptr<NetEvent>> _outEvents;
     
 public:
     NetPhysicsController():
@@ -73,7 +63,7 @@ public:
 		return std::make_shared<NetPhysicsController>();
 	};
 
-    void init(std::shared_ptr<cugl::physics2::ObstacleWorld>& world, std::function<void(std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>)> linkSceneToObsFunc) {
+    void init(std::shared_ptr<cugl::physics2::ObstacleWorld>& world, std::function<void(const std::shared_ptr<physics2::Obstacle>&, const std::shared_ptr<scene2::SceneNode>&)> linkSceneToObsFunc) {
         _world = world;
         _linkSceneToObsFunc = linkSceneToObsFunc;
     }
@@ -85,7 +75,7 @@ public:
 
     void processPhysObjEvent(const std::shared_ptr<PhysObjEvent>& event);
     
-    void addSharedObstacle(Uint32 factoryID, std::shared_ptr<std::vector<std::byte>>);
+    void addSharedObstacle(Uint32 factoryID, std::shared_ptr<std::vector<std::byte>> bytes);
 
     void reset(){
         _itprCount = 0;
@@ -104,6 +94,10 @@ public:
     void processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& event);
     
     void fixedUpdate();
+
+    std::vector<std::shared_ptr<NetEvent>>& getOutEvents() {
+		return _outEvents;
+	}
 };
 
 #endif /* Interpolator_h */

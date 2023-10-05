@@ -111,8 +111,11 @@ void NetEventController::processReceivedEvent(const std::shared_ptr<NetEvent>& e
         if (auto phys = std::dynamic_pointer_cast<PhysSyncEvent>(e)) {
             if(_physEnabled)
 			    _physController->processPhysSyncEvent(phys);
-            //_reservedInEventQueue.push(phys);
 		}
+        else if (auto phys = std::dynamic_pointer_cast<PhysObjEvent>(e)) {
+            if (_physEnabled)
+                _physController->processPhysObjEvent(phys);
+        }
         else {
             _inEventQueue.push(e);
         } 
@@ -176,8 +179,13 @@ void NetEventController::updateNet() {
                 pushOutEvent(_physController->packPhysSync());
             }
 			_physController->fixedUpdate();
-		}
+            
+            for(int i = 0; i < _physController->getOutEvents().size(); i++){
+                pushOutEvent(_physController->getOutEvents()[i]);
+            }
+            _physController->getOutEvents().clear();
 
+		}
         sendQueuedOutData();
     }
 }

@@ -306,6 +306,20 @@ public:
     }
 };
 
+class ObstacleFactory {
+public:
+    static std::shared_ptr<ObstacleFactory> alloc() {
+        return std::make_shared<ObstacleFactory>();
+    };
+
+    /**
+     * Serialize any paramater that the event contains to a vector of bytes.
+     */
+    virtual std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> createObstacle(const std::vector<std::byte>& params) {
+        return std::make_pair(std::make_shared<physics2::BoxObstacle>(), std::make_shared<scene2::SceneNode>());
+    }
+};
+
 #define OBJ_CREATION_FLAG 200
 #define OBJ_DELETION_FLAG 201
 
@@ -373,12 +387,13 @@ public:
     }
 
     void deserialize(const std::vector<std::byte>& data) override {
-        if (data.size() < 4)
+        if (data.size() < sizeof(Uint32)+sizeof(Uint64))
             return;
-
         _deserializer.reset();
         _deserializer.receive(data);
-        
+        _obstacleFactId = _deserializer.readUint32();
+        _objId = _deserializer.readUint64();
+        _packedParam = std::make_shared<std::vector<std::byte>>(data.begin() + sizeof(Uint32) + sizeof(Uint64),data.end());
     }
 
 };
