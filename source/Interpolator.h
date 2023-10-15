@@ -28,8 +28,6 @@ typedef struct{
     Uint64 numI;
 } targetParam;
 
-
-
 class NetPhysicsController {
     
 protected:
