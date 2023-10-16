@@ -14,6 +14,7 @@
 #include <typeindex>
 #include <vector>
 #include <concepts>
+#include <queue>
 #include "CUNetEvent.h"
 #include "Interpolator.h"
 
@@ -98,9 +99,9 @@ protected:
 		}
 	};
 
-    std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventCompare> _inEventQueue;
-    std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventCompare> _reservedInEventQueue;
-    std::priority_queue<std::shared_ptr<NetEvent>, std::vector<std::shared_ptr<NetEvent>>, NetEventCompare> _outEventQueue;
+    std::queue<std::shared_ptr<NetEvent>> _inEventQueue;
+    std::queue<std::shared_ptr<NetEvent>> _reservedInEventQueue;
+    std::queue<std::shared_ptr<NetEvent>> _outEventQueue;
 
 public:
     NetEventController(void):

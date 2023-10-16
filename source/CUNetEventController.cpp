@@ -155,7 +155,7 @@ void NetEventController::sendQueuedOutData(){
     int msgCount = 0;
     int byteCount = 0;
     while (!_outEventQueue.empty()) {
-        auto e = _outEventQueue.top();
+        auto e = _outEventQueue.front();
         auto wrapped = wrap(e);
         msgCount++;
         byteCount += wrapped.size();
@@ -193,13 +193,13 @@ void NetEventController::updateNet() {
 bool NetEventController::isInAvailable() {
     if ( _inEventQueue.empty() )
         return false;
-    std::shared_ptr<NetEvent> top = _inEventQueue.top();
+    std::shared_ptr<NetEvent> top = _inEventQueue.front();
     return top->_eventTimeStamp <= _appRef->getUpdateCount()-_startGameTimeStamp;
 }
 
 
 std::shared_ptr<NetEvent> NetEventController::popInEvent() {
-	auto e = _inEventQueue.top();
+	auto e = _inEventQueue.front();
 	_inEventQueue.pop();
 	return e;
 }
