@@ -677,7 +677,6 @@ netdata GameScene::packFire(Uint64 timestamp){
     float firepower = _input.getFirePower();
     _serializer.writeFloat(firepower);
     data.data = _serializer.serialize();
-    CULog("pos : %f, %f",cannon->getPosition().x,cannon->getPosition().y);
     auto pair = _network->getPhysController()->addSharedObstacle(_factId, _crateFact->serializeParams(cannon->getPosition(), _scale));
     Vec2 forward(SDL_cosf(angle), SDL_sinf(angle));
     pair.first->setLinearVelocity(forward * 50 * firepower);

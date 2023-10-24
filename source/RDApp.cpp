@@ -56,7 +56,7 @@ void RocketApp::onStartup() {
     AudioEngine::start(24);
     _assets->loadDirectoryAsync("json/assets.json",nullptr);
     
-    cugl::net::NetworkLayer::start(net::NetworkLayer::Log::INFO);
+    cugl::net::NetworkLayer::start(net::NetworkLayer::Log::VERBOSE);
     
     Application::onStartup(); // YOU MUST END with call to parent
 }

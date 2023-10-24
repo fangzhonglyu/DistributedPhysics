@@ -42,7 +42,7 @@ void NetEventController::startGame() {
 void NetEventController::markReady() {
     if (_status == Status::INSESSION && _shortUID) {
 		_status = Status::READY;
-		_network->broadcast(wrap(GameStateEvent::allocReady()));
+		pushOutEvent(GameStateEvent::allocReady());
 	}
 }
 
@@ -126,6 +126,7 @@ void NetEventController::processReceivedEvent(const std::shared_ptr<NetEvent>& e
 }
 
 void NetEventController::processGameStateEvent(const std::shared_ptr<GameStateEvent>& e) {
+    CULog("GAME STATE %d, CUR STATE %d", e->getType(), _status);
     if (_status == CONNECTED && e->getType() == GameStateEvent::UID_ASSIGN) {
         _shortUID = e->getShortUID();
         _status = INSESSION;
@@ -139,14 +140,18 @@ void NetEventController::processGameStateEvent(const std::shared_ptr<GameStateEv
             _numReady++;
         }
         if (_numReady == _network->getNumPlayers()) {
-            _network->broadcast(wrap(GameStateEvent::allocGameStart()));
+            _status == READY;
+            CULog("GAME START MESSAGE SENT");
+            pushOutEvent(GameStateEvent::allocGameStart());
         }
     }
+    CULog("FINISHED STATE %d", _status);
 }
 
 void NetEventController::processReceivedData(){
     _network->receive([this](const std::string source,
         const std::vector<std::byte>& data) {
+        CULog("DATA %d, CUR STATE %d", data[0], _status);
         processReceivedEvent(unwrap(data, source)); 
     });
 }
@@ -159,13 +164,9 @@ void NetEventController::sendQueuedOutData(){
         auto wrapped = wrap(e);
         msgCount++;
         byteCount += wrapped.size();
-        if (msgCount > MAX_OUT_MSG || byteCount > MAX_OUT_BYTES) {
-            break;
-        }
-        else {
-            _network->broadcast(wrap(e));
-            _outEventQueue.pop();
-        }
+        //CULog("flag: %x", (std::byte)getType(*e));
+        _network->broadcast(wrap(e));
+        _outEventQueue.pop();
     }
 }
 
@@ -181,9 +182,8 @@ void NetEventController::updateNet() {
 			_physController->fixedUpdate();
             
             for (auto it = _physController->getOutEvents().begin(); it != _physController->getOutEvents().end(); it++) {
-				pushOutEvent(*it);
-			}
-           
+                pushOutEvent(*it);
+		    }
             _physController->getOutEvents().clear();
                 
 		}
@@ -225,6 +225,7 @@ std::shared_ptr<NetEvent> NetEventController::unwrap(const std::vector<std::byte
 const std::vector<std::byte> NetEventController::wrap(const std::shared_ptr<NetEvent>& e) {
     LWSerializer serializer;
     serializer.writeByte((std::byte)getType(*e));
+    //CULog("flag: %x",(std::byte)getType(*e));
     serializer.writeUint64(_appRef->getUpdateCount()-_startGameTimeStamp);
     serializer.writeByteVector(e->serialize());
 	return serializer.serialize();
