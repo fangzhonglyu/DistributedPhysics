@@ -977,7 +977,6 @@ void GameScene::fixedUpdate() {
         queueNetdata(packFire(_counter+INPUT_DELAY,1.0f));
     }*/
     _world->update(FIXED_TIMESTEP_S);
-    _itpr.fixedUpdate();
     if(LOG_POS)
         logData();
     _counter++;

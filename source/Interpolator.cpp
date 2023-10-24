@@ -33,7 +33,6 @@ void NetPhysicsController::processPhysObjEvent(const std::shared_ptr<PhysObjEven
     if (event->getType() == PhysObjEvent::Type::OBJ_CREATION) {
         CUAssertLog(event->getObstacleFactId() < _obstacleFacts.size(), "Unknown object Factory %u", event->getObstacleFactId());
         auto pair = _obstacleFacts[event->getObstacleFactId()]->createObstacle(*event->getPackedParam());
-        CULog("obs pos %f %f", pair.first->getPosition().x, pair.first->getPosition().y);
         _world->addObstacle(pair.first, event->getObjId());
         if (_linkSceneToObsFunc) {
             _linkSceneToObsFunc(pair.first, pair.second);
@@ -172,7 +171,7 @@ bool NetPhysicsController::isInSync(std::shared_ptr<physics2::Obstacle> obj){
     return _cache.count(obj) > 0;
 }
 
-std::shared_ptr<PhysSyncEvent> NetPhysicsController::packPhysSync() {
+void NetPhysicsController::packPhysSync() {
     auto event = PhysSyncEvent::alloc();
     std::vector<Uint64> velQueue;
     for (auto it = _world->getIdToObj().begin(); it != _world->getIdToObj().end(); it++) {
@@ -202,11 +201,44 @@ std::shared_ptr<PhysSyncEvent> NetPhysicsController::packPhysSync() {
            event->addObj(*it);
         }*/
     }
+    _outEvents.push_back(event);
+}
 
-    return event;
+void NetPhysicsController::packPhysObj() {
+    auto objs = _world->getObstacles();
+    for (auto it = objs.begin(); it != objs.end(); it++) {
+        auto obj = (*it);
+        Uint64 id = _world->getObjToId().at(obj);
+        if (obj->isShared()) {
+            if (obj->isPosDirty()) {
+                _outEvents.push_back(PhysObjEvent::allocPos(id,obj->getPosition()));
+            }
+            if (obj->isAngleDirty()) {
+				_outEvents.push_back(PhysObjEvent::allocAngle(id,obj->getAngle()));
+			}
+            if (obj->isVelDirty()) {
+				_outEvents.push_back(PhysObjEvent::allocVel(id,obj->getLinearVelocity()));
+			}
+            if (obj->isAngVelDirty()) {
+				_outEvents.push_back(PhysObjEvent::allocAngularVel(id,obj->getAngularVelocity()));
+			}
+            if (obj->isTypeDirty()) {
+                _outEvents.push_back(PhysObjEvent::allocBodyType(id,obj->getBodyType()));
+            }
+            if (obj->isBoolConstDirty()) {
+				_outEvents.push_back(PhysObjEvent::allocBoolConsts(id,obj->isEnabled(),obj->isAwake(),obj->isSleepingAllowed(),obj->isFixedRotation(),obj->isBullet(),obj->isSensor()));
+			}
+            if (obj->isFloatConstDirty()) {
+                _outEvents.push_back(PhysObjEvent::allocFloatConsts(id,obj->getDensity(),obj->getFriction(),obj->getRestitution(),obj->getLinearDamping(),obj->getAngularDamping(), obj->getGravityScale(),obj->getMass(),obj->getInertia(),obj->getCentroid()));
+            }
+            obj->clearSharingDirtyBits();
+        }
+	}
 }
 
 void NetPhysicsController::fixedUpdate(){
+    packPhysObj();
+
     for(auto it = _cache.begin(); it != _cache.end(); it++){
         auto obj = it->first;
         if(!obj->isShared()){

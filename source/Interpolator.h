@@ -93,13 +93,16 @@ public:
         _stepSum = 0;
         _cache.clear();
         _deleteCache.clear();
+        _outEvents.clear();
     }
     
     bool isInSync(std::shared_ptr<physics2::Obstacle> obj);
 
     void addSyncObject(std::shared_ptr<physics2::Obstacle> obj, std::shared_ptr<targetParam> param);
 
-    std::shared_ptr<PhysSyncEvent> packPhysSync();
+    void packPhysSync();
+
+    void packPhysObj();
     
     void processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& event);
     

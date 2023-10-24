@@ -431,7 +431,7 @@ public:
 		_isSensor = isSensor;
 	}
 
-    void initFloatConsts(Uint64 objId, float density, float friction, float restitution, float linearDamping, float angularDamping, float gravityScale) {
+    void initFloatConsts(Uint64 objId, float density, float friction, float restitution, float linearDamping, float angularDamping, float gravityScale, float mass, float inertia, Vec2 centroid) {
         _type = OBJ_FLOAT_CONSTS;
         _objId = objId;
         _density = density;
@@ -440,6 +440,9 @@ public:
         _linearDamping = linearDamping;
         _angularDamping = angularDamping;
         _gravityScale = gravityScale;
+        _mass = mass;
+        _inertia = inertia;
+        _centroid = centroid;
     }
     
     static std::shared_ptr<PhysObjEvent> allocCreation(Uint32 obstacleFactId, Uint64 objId, std::shared_ptr<std::vector<std::byte>> packedParam){
@@ -453,6 +456,48 @@ public:
         e->initDeletion(objId);
         return e;
     }
+
+    static std::shared_ptr<PhysObjEvent> allocPos(Uint64 objId, Vec2 pos) {
+		auto e = std::make_shared<PhysObjEvent>();
+		e->initPos(objId, pos);
+		return e;
+	}
+
+    static std::shared_ptr<PhysObjEvent> allocVel(Uint64 objId, Vec2 vel) {
+        auto e = std::make_shared<PhysObjEvent>();
+        e->initVel(objId, vel);
+        return e;
+    }
+
+    static std::shared_ptr<PhysObjEvent> allocAngle(Uint64 objId, float angle) {
+        auto e = std::make_shared<PhysObjEvent>();
+        e->initAngle(objId, angle);
+        return e;
+    }
+
+    static std::shared_ptr<PhysObjEvent> allocAngularVel(Uint64 objId, float angularVel) {
+		auto e = std::make_shared<PhysObjEvent>();
+		e->initAngularVel(objId, angularVel);
+		return e;
+	}
+
+    static std::shared_ptr<PhysObjEvent> allocBodyType(Uint64 objId, b2BodyType bodyType) {
+		auto e = std::make_shared<PhysObjEvent>();
+		e->initBodyType(objId, bodyType);
+		return e;
+	}
+
+    static std::shared_ptr<PhysObjEvent> allocBoolConsts(Uint64 objId, bool isEnabled, bool isAwake, bool isSleepingAllowed, bool isFixedRotation, bool isBullet, bool isSensor) {
+        auto e = std::make_shared<PhysObjEvent>();
+        e->initBoolConsts(objId, isEnabled, isAwake, isSleepingAllowed, isFixedRotation, isBullet, isSensor);
+        return e;
+    }
+
+    static std::shared_ptr<PhysObjEvent> allocFloatConsts(Uint64 objId, float density, float friction, float restitution, float linearDamping, float angularDamping, float gravityScale, float mass, float inertia, Vec2 centroid) {
+		auto e = std::make_shared<PhysObjEvent>();
+		e->initFloatConsts(objId, density, friction, restitution, linearDamping, angularDamping, gravityScale, mass, inertia, centroid);
+		return e;
+	}
     
     std::shared_ptr<NetEvent> newEvent() override {
         return std::make_shared<PhysObjEvent>();
