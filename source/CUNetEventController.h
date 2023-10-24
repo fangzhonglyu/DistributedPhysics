@@ -44,7 +44,7 @@ protected:
     /** The asset manager for the controller. */
     std::shared_ptr<cugl::AssetManager> _assets;
     
-    Uint8 _shortUUID;
+    Uint32 _shortUID;
 
     Uint8 _numReady;
 
@@ -109,7 +109,7 @@ public:
         _status{ Status::IDLE },
         _isHost{ false },
         _startGameTimeStamp{ 0 },
-        _shortUUID{ 0 },
+        _shortUID{ 0 },
         _numReady{ 0 },
         _roomid{ "" },
         _assets{ nullptr },
@@ -138,8 +138,9 @@ public:
     }
     
     void enablePhysics(std::shared_ptr<cugl::physics2::ObstacleWorld>& world, std::function<void(const std::shared_ptr<physics2::Obstacle>&, const std::shared_ptr<scene2::SceneNode>&)> linkSceneToObsFunc) {
+        CUAssertLog(_shortUID, "You must receive a UID assigned from host before enabling physics.");
         _physEnabled = true;
-        _physController->init(world,linkSceneToObsFunc);
+        _physController->init(world,_shortUID,linkSceneToObsFunc);
         attachEventType<PhysSyncEvent>();
         attachEventType<PhysObjEvent>();
 	}

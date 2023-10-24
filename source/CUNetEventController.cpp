@@ -36,12 +36,11 @@ void NetEventController::startGame() {
         for (auto it = players.begin(); it != players.end(); it++) {
             _network->sendTo((*it), wrap(GameStateEvent::allocUIDAssign(shortUID++)));
         }
-        //_network->broadcast(wrap(GameStateEvent::allocUIDAssign(shortUID++)));
     }
 }
 
 void NetEventController::markReady() {
-    if (_status == Status::INSESSION && _shortUUID != 0) {
+    if (_status == Status::INSESSION && _shortUID) {
 		_status = Status::READY;
 		_network->broadcast(wrap(GameStateEvent::allocReady()));
 	}
@@ -79,7 +78,7 @@ bool NetEventController::connectAsClient(std::string roomid) {
 void NetEventController::disconnect() {
     _network->close();
     _network = nullptr;
-    _shortUUID = 0;
+    _shortUID = 0;
     _status = Status::IDLE;
 }
 
@@ -127,7 +126,7 @@ void NetEventController::processReceivedEvent(const std::shared_ptr<NetEvent>& e
 
 void NetEventController::processGameStateEvent(const std::shared_ptr<GameStateEvent>& e) {
     if (_status == CONNECTED && e->getType() == GameStateEvent::UID_ASSIGN) {
-        _shortUUID = e->getShortUID();
+        _shortUID = e->getShortUID();
         _status = INSESSION;
     }
     if (_status == READY && e->getType() == GameStateEvent::GAME_START) {

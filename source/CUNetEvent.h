@@ -334,6 +334,7 @@ protected:
     Uint64 _objId;
     std::shared_ptr<std::vector<std::byte>> _packedParam;
 
+public:
     Vec2 _pos;
     Vec2 _vel;
     
@@ -372,6 +373,8 @@ public:
     Uint32 getObstacleFactId() const { return _obstacleFactId; }
 
     Uint64 getObjId() const { return _objId; }
+
+    Type getType() const { return _type; }
 
     const std::shared_ptr<std::vector<std::byte>> getPackedParam() const { return _packedParam; }
     
@@ -417,10 +420,9 @@ public:
         _bodyType = bodyType;
     }
 
-    void initBoolConsts(Uint64 objId, bool isStatic, bool isEnabled, bool isAwake, bool isSleepingAllowed, bool isFixedRotation, bool isBullet, bool isSensor) {
+    void initBoolConsts(Uint64 objId, bool isEnabled, bool isAwake, bool isSleepingAllowed, bool isFixedRotation, bool isBullet, bool isSensor) {
 		_type = OBJ_BOOL_CONSTS;
 		_objId = objId;
-		_isStatic = isStatic;
 		_isEnabled = isEnabled;
 		_isAwake = isAwake;
 		_isSleepingAllowed = isSleepingAllowed;
@@ -485,7 +487,6 @@ public:
                 _serializer.writeFloat(_angularVel);
                 break;
             case PhysObjEvent::OBJ_BOOL_CONSTS:
-                _serializer.writeBool(_isStatic);
                 _serializer.writeBool(_isEnabled);
                 _serializer.writeBool(_isAwake);
                 _serializer.writeBool(_isSleepingAllowed);
@@ -521,7 +522,7 @@ public:
         switch (_type) {
         case PhysObjEvent::OBJ_CREATION:
             _obstacleFactId = _deserializer.readUint32();
-            _packedParam = std::make_shared<std::vector<std::byte>>(data.begin() + sizeof(Uint32) + sizeof(Uint64), data.end());
+            _packedParam = std::make_shared<std::vector<std::byte>>(data.begin() + 2 * sizeof(Uint32) + sizeof(Uint64), data.end());
             break;
         case PhysObjEvent::OBJ_DELETION:
 			break;
@@ -543,7 +544,6 @@ public:
             _angularVel = _deserializer.readFloat();
             break;
         case PhysObjEvent::OBJ_BOOL_CONSTS:
-            _isStatic = _deserializer.readBool();
             _isEnabled = _deserializer.readBool();
             _isAwake = _deserializer.readBool();
             _isSleepingAllowed = _deserializer.readBool();
@@ -558,9 +558,10 @@ public:
             _linearDamping = _deserializer.readFloat();
             _angularDamping = _deserializer.readFloat();
             _gravityScale = _deserializer.readFloat();
-                _mass = _deserializer.readFloat();
-                _inertia = _deserializer.readFloat();
-                _centroid = Vec2(_deserializer.readFloat(),_deserializer.readFloat());
+            _mass = _deserializer.readFloat();
+            _inertia = _deserializer.readFloat();
+            _centroid.x = _deserializer.readFloat();
+            _centroid.y = _deserializer.readFloat();
             break;
         default:
             CUAssertLog(false, "Deserializing invalid obstacle event type");

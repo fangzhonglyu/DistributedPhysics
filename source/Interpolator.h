@@ -49,6 +49,8 @@ protected:
 
     std::function<void(const std::shared_ptr<physics2::Obstacle>&, const std::shared_ptr<scene2::SceneNode>&)> _linkSceneToObsFunc;
 
+    std::unordered_map<std::shared_ptr<physics2::Obstacle>,std::shared_ptr<scene2::SceneNode>> _sharedObsToNodeMap;
+
     float interpolate(int stepsLeft, float target, float source);
 
     std::vector<std::shared_ptr<NetEvent>> _outEvents;
@@ -61,10 +63,20 @@ public:
 		return std::make_shared<NetPhysicsController>();
 	};
 
-    void init(std::shared_ptr<cugl::physics2::ObstacleWorld>& world, std::function<void(const std::shared_ptr<physics2::Obstacle>&, const std::shared_ptr<scene2::SceneNode>&)> linkSceneToObsFunc) {
+    void init(std::shared_ptr<cugl::physics2::ObstacleWorld>& world, Uint32 shortUID, std::function<void(const std::shared_ptr<physics2::Obstacle>&, const std::shared_ptr<scene2::SceneNode>&)> linkSceneToObsFunc) {
         _world = world;
+        _world->setShortUID(shortUID);
         _linkSceneToObsFunc = linkSceneToObsFunc;
     }
+
+    void dispose() {
+    	_world = nullptr;
+		_linkSceneToObsFunc = nullptr;
+    }
+
+    ~NetPhysicsController() {
+		dispose();
+	}
 
     uint32 attachFactory(std::shared_ptr<ObstacleFactory> fact) {
         _obstacleFacts.push_back(fact);
@@ -73,7 +85,7 @@ public:
 
     void processPhysObjEvent(const std::shared_ptr<PhysObjEvent>& event);
     
-    void addSharedObstacle(Uint32 factoryID, std::shared_ptr<std::vector<std::byte>> bytes);
+    std::pair<std::shared_ptr<physics2::Obstacle>,std::shared_ptr<scene2::SceneNode>> addSharedObstacle(Uint32 factoryID, std::shared_ptr<std::vector<std::byte>> bytes);
 
     void reset(){
         _itprCount = 0;

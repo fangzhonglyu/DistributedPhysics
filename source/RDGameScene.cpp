@@ -64,7 +64,7 @@ using namespace cugl;
 
 #define PING_STEP PING/1000.0f/(FIXED_TIMESTEP_S)
 
-#define LOG_POS 1
+#define LOG_POS 0
 
 // Since these appear only once, we do not care about the magic numbers.
 // In an actual game, this information would go in a data file.
@@ -145,16 +145,16 @@ float GOAL_POS[] = { 6, 12};
 
 std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> CrateFactory::createObstacle(Vec2 pos, float scale) {
     int indx = (_rand() % 2 == 0 ? 2 : 1);
-    std::stringstream ss;
-    ss << CRATE_PREFIX << (indx < 10 ? "0" : "") << indx;
+    std::string name = (CRATE_PREFIX "0") + std::to_string(indx);
 
     // Create the sprite for this crate
-    auto image = _assets->get<Texture>(ss.str());
+    auto image = _assets->get<Texture>(name);
 
     Size boxSize(image->getSize() / scale / 2.f);
     auto crate = physics2::BoxObstacle::alloc(pos, boxSize);
+    crate->setShared(false);
+    // ===== BEGIN NON_SHARED BLOCK =====
     crate->setDebugColor(DYNAMIC_COLOR);
-    crate->setName(ss.str());
     crate->setAngleSnap(0); // Snap to the nearest degree
 
     // Set the physics attributes
@@ -166,7 +166,8 @@ std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode
     auto sprite = scene2::PolygonNode::allocWithTexture(image);
     sprite->setAnchor(Vec2::ANCHOR_CENTER);
     sprite->setScale(0.5f);
-
+    crate->setShared(true);
+    // ====== END NON_SHARED BLOCK ======
     return std::make_pair(crate, sprite);
 }
 
@@ -671,12 +672,15 @@ netdata GameScene::packFire(Uint64 timestamp){
     _serializer.reset();
     _serializer.writeBool(_isHost);
     auto cannon = _isHost ? _cannon1 : _cannon2;
-    float angle = cannon->getAngle();
+    float angle = cannon->getAngle() + M_PI_2;
     _serializer.writeFloat(angle);
     float firepower = _input.getFirePower();
     _serializer.writeFloat(firepower);
     data.data = _serializer.serialize();
-    _network->getPhysController()->addSharedObstacle(_factId, _crateFact->serializeParams(cannon->getPosition(), _scale));
+    CULog("pos : %f, %f",cannon->getPosition().x,cannon->getPosition().y);
+    auto pair = _network->getPhysController()->addSharedObstacle(_factId, _crateFact->serializeParams(cannon->getPosition(), _scale));
+    Vec2 forward(SDL_cosf(angle), SDL_sinf(angle));
+    pair.first->setLinearVelocity(forward * 50 * firepower);
     //float delayMs = (timestamp-_counter)*FIXED_TIMESTEP_S*1000;
     //CULog("Fire input at angle %f, power %f, cached for %llu, added delay of %.2fms",angle,firepower,timestamp,delayMs);
     return data;

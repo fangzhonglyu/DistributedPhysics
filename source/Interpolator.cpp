@@ -13,23 +13,101 @@
 
 using namespace cugl;
 
+//enum Type
+//{
+//    OBJ_CREATION,
+//    OBJ_DELETION,
+//    OBJ_BODY_TYPE,
+//    OBJ_POSITION,
+//    OBJ_VELOCITY,
+//    OBJ_ANGLE,
+//    OBJ_ANGULAR_VEL,
+//    OBJ_BOOL_CONSTS,
+//    OBJ_FLOAT_CONSTS
+//};
+
 void NetPhysicsController::processPhysObjEvent(const std::shared_ptr<PhysObjEvent>& event) {
     if (event->getSourceId() == "")
         return; // Ignore physic syncs from self.
-    CUAssertLog(event->getObstacleFactId() < _obstacleFacts.size(), "Unknown object Factory %u", event->getObstacleFactId());
-    auto pair = _obstacleFacts[event->getObstacleFactId()]->createObstacle(*event->getPackedParam());
-    _world->addObstacle(pair.first, event->getObjId());
-    if (_linkSceneToObsFunc)
-        _linkSceneToObsFunc(pair.first, pair.second);
+
+    if (event->getType() == PhysObjEvent::Type::OBJ_CREATION) {
+        CUAssertLog(event->getObstacleFactId() < _obstacleFacts.size(), "Unknown object Factory %u", event->getObstacleFactId());
+        auto pair = _obstacleFacts[event->getObstacleFactId()]->createObstacle(*event->getPackedParam());
+        CULog("obs pos %f %f", pair.first->getPosition().x, pair.first->getPosition().y);
+        _world->addObstacle(pair.first, event->getObjId());
+        if (_linkSceneToObsFunc) {
+            _linkSceneToObsFunc(pair.first, pair.second);
+            _sharedObsToNodeMap.insert(std::make_pair(pair.first, pair.second));
+        }
+        return;
+    }
+
+    // Ignore event if object is not found.
+    // TODO: Send request to object owner to sync object.
+    if(!_world->getIdToObj().count(event->getObjId()))
+		return;
+
+    auto obj = _world->getIdToObj().at(event->getObjId());
+
+    if (event->getType() == PhysObjEvent::Type::OBJ_DELETION) {
+        _world->removeObstacle(obj.get());
+        if (_sharedObsToNodeMap.count(obj)) {
+            _sharedObsToNodeMap.at(obj)->removeFromParent();
+            _sharedObsToNodeMap.erase(obj);
+        }
+        return;
+    }
+
+    obj->setShared(false);
+    // ===== BEGIN NON-SHARED BLOCK =====
+    switch (event->getType()) {
+        case PhysObjEvent::Type::OBJ_BODY_TYPE:
+			obj->setBodyType(event->_bodyType);
+			break;
+        case PhysObjEvent::Type::OBJ_POSITION:
+            obj->setPosition(event->_pos);
+            break;
+        case PhysObjEvent::Type::OBJ_VELOCITY:
+            obj->setLinearVelocity(event->_vel);
+            break;
+        case PhysObjEvent::Type::OBJ_ANGLE:
+			obj->setAngle(event->_angle);
+			break;
+        case PhysObjEvent::Type::OBJ_ANGULAR_VEL:
+            obj->setAngularVelocity(event->_angularVel);
+            break;
+        case PhysObjEvent::Type::OBJ_BOOL_CONSTS:
+            if (event->_isEnabled != obj->isEnabled()) obj->setEnabled(event->_isEnabled);
+            if (event->_isAwake != obj->isAwake()) obj->setAwake(event->_isAwake);
+            if (event->_isSleepingAllowed != obj->isSleepingAllowed()) obj->setSleepingAllowed(event->_isSleepingAllowed);
+            if (event->_isFixedRotation != obj->isFixedRotation()) obj->setFixedRotation(event->_isFixedRotation);
+            if (event->_isBullet != obj->isBullet()) obj->setBullet(event->_isBullet);
+            if (event->_isSensor != obj->isSensor()) obj->setSensor(event->_isSensor);
+			break;
+        case PhysObjEvent::Type::OBJ_FLOAT_CONSTS:
+            if (event->_density != obj->getDensity()) obj->setDensity(event->_density);
+            if (event->_friction != obj->getFriction()) obj->setFriction(event->_friction);
+            if (event->_restitution != obj->getRestitution()) obj->setRestitution(event->_restitution);
+            if (event->_linearDamping != obj->getLinearDamping()) obj->setLinearDamping(event->_linearDamping);
+            if (event->_gravityScale != obj->getGravityScale()) obj->setGravityScale(event->_gravityScale);
+            if (event->_mass != obj->getMass()) obj->setMass(event->_mass);
+            if (event->_inertia != obj->getInertia()) obj->setInertia(event->_inertia);
+            if (event->_centroid != obj->getCentroid()) obj->setCentroid(event->_centroid);
+            break;
+	}
+    // ====== END NON-SHARED BLOCK ======
+    obj->setShared(true);
 }
 
-void NetPhysicsController::addSharedObstacle(Uint32 factoryID, std::shared_ptr<std::vector<std::byte>> bytes) {
+std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> NetPhysicsController::addSharedObstacle(Uint32 factoryID, std::shared_ptr<std::vector<std::byte>> bytes) {
     CUAssertLog(factoryID < _obstacleFacts.size(), "Unknown object Factory %u", factoryID);
     auto pair = _obstacleFacts[factoryID]->createObstacle(*bytes);
+    pair.first->setShared(true);
     Uint64 objId = _world->addObstacle(pair.first);
     if (_linkSceneToObsFunc)
 		_linkSceneToObsFunc(pair.first, pair.second);
     _outEvents.push_back(PhysObjEvent::allocCreation(factoryID,objId,bytes));
+    return pair;
 }
 
 void NetPhysicsController::processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& event) {

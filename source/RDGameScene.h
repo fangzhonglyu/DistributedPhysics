@@ -63,7 +63,9 @@ public:
     std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> createObstacle(const std::vector<std::byte>& params) override {
         _deserializer.reset();
         _deserializer.receive(params);
-        Vec2 pos = Vec2(_deserializer.readFloat(), _deserializer.readFloat());
+        float x = _deserializer.readFloat();
+        float y = _deserializer.readFloat();
+        Vec2 pos = Vec2(x,y);
         float scale = _deserializer.readFloat();
         return createObstacle(pos, scale);
     }
