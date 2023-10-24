@@ -75,8 +75,12 @@ void NetPhysicsController::addSyncObject(std::shared_ptr<physics2::Obstacle> obj
         return;
         #endif
         auto oldParam = _cache.at(obj);
+        obj->setShared(false);
+        // ===== BEGIN NON-SHARED BLOCK =====
         obj->setLinearVelocity(oldParam->targetVel);
         obj->setAngularVelocity(oldParam->targetAngV);
+        // ====== END NON-SHARED BLOCK ======
+        obj->setShared(true);
         param->I = oldParam->I;
         param->numI = oldParam->numI;
     }
@@ -127,6 +131,12 @@ std::shared_ptr<PhysSyncEvent> NetPhysicsController::packPhysSync() {
 void NetPhysicsController::fixedUpdate(){
     for(auto it = _cache.begin(); it != _cache.end(); it++){
         auto obj = it->first;
+        if(!obj->isShared()){
+            _deleteCache.push_back(it->first);
+            continue;
+        }
+        obj->setShared(false);
+        // ===== BEGIN NON-SHARED BLOCK =====
         std::shared_ptr<targetParam> param = it->second;
         int stepsLeft = param->numSteps-param->curStep;
         
@@ -174,6 +184,8 @@ void NetPhysicsController::fixedUpdate(){
             obj->setAngularVelocity(interpolate(stepsLeft, param->targetAngV, obj->getAngularVelocity()));
         }
         param->curStep++;
+        // ====== END NON-SHARED BLOCK ======
+        obj->setShared(true);
     }
 
     for(auto it = _deleteCache.begin(); it != _deleteCache.end(); it++){

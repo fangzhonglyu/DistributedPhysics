@@ -336,9 +336,11 @@ protected:
 
     Vec2 _pos;
     Vec2 _vel;
+    
 	float _angle;
     float _angularVel;
 
+    //bool consts
     bool _isStatic;
     bool _isEnabled;
     bool _isAwake;
@@ -347,12 +349,16 @@ protected:
     bool _isBullet;
     bool _isSensor;
 
+    //float consts
 	float _density;
     float _friction;
     float _restitution;
     float _linearDamping;
     float _angularDamping;
     float _gravityScale;
+    float _mass;
+    float _inertia;
+    Vec2 _centroid;
 
     b2BodyType _bodyType;
 
@@ -494,6 +500,10 @@ public:
 				_serializer.writeFloat(_linearDamping);
 				_serializer.writeFloat(_angularDamping);
 				_serializer.writeFloat(_gravityScale);
+                _serializer.writeFloat(_mass);
+                _serializer.writeFloat(_inertia);
+                _serializer.writeFloat(_centroid.x);
+                _serializer.writeFloat(_centroid.y);
 				break;
             default:
 				CUAssertLog(false, "Serializing invalid obstacle event type");
@@ -548,6 +558,9 @@ public:
             _linearDamping = _deserializer.readFloat();
             _angularDamping = _deserializer.readFloat();
             _gravityScale = _deserializer.readFloat();
+                _mass = _deserializer.readFloat();
+                _inertia = _deserializer.readFloat();
+                _centroid = Vec2(_deserializer.readFloat(),_deserializer.readFloat());
             break;
         default:
             CUAssertLog(false, "Deserializing invalid obstacle event type");

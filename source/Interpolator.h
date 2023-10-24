@@ -68,7 +68,7 @@ public:
 
     uint32 attachFactory(std::shared_ptr<ObstacleFactory> fact) {
         _obstacleFacts.push_back(fact);
-        return _obstacleFacts.size() - 1;
+        return (uint32)_obstacleFacts.size() - 1;
     }
 
     void processPhysObjEvent(const std::shared_ptr<PhysObjEvent>& event);
