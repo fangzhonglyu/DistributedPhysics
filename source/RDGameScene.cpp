@@ -885,7 +885,7 @@ void GameScene::processCache(){
 }
 
 void GameScene::updateNet(){
-    _network->updateNet();
+    
 }
 
 void GameScene::transmitNetdata(const netdata data){

@@ -165,6 +165,8 @@ public:
     }
 
     Status getStatus() const { return _status; }
+
+    Uint32 getShortUID() const { return _shortUID; }
     
     void startGame();
 

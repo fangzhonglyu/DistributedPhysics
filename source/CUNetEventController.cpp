@@ -29,13 +29,9 @@ bool NetEventController::init(const std::shared_ptr<cugl::AssetManager>& assets)
 }
 
 void NetEventController::startGame() {
-    if (_isHost && _status == Status::CONNECTED) {
+    CUAssertLog(_isHost, "Only host should call startGame()");
+    if (_status == Status::CONNECTED) {
         _network->startSession();
-        auto players = _network->getPlayers();
-        Uint32 shortUID = 1;
-        for (auto it = players.begin(); it != players.end(); it++) {
-            _network->sendTo((*it), wrap(GameStateEvent::allocUIDAssign(shortUID++)));
-        }
     }
 }
 
@@ -92,6 +88,23 @@ bool NetEventController::checkConnection() {
         }
         return true;
     }
+    else if (_status == CONNECTED && state == NetcodeConnection::State::INSESSION) {
+		_status = Status::INSESSION;
+        if (_isHost) {
+            auto players = _network->getPlayers();
+            Uint32 shortUID = 1;
+            CULog("NUM Players: %d", players.size());
+            for (auto it = players.begin(); it != players.end(); it++) {
+                CULog("Player Name: %s", (*it).c_str());
+                _network->sendTo((*it), wrap(GameStateEvent::allocUIDAssign(shortUID++)));
+            }
+        }
+		return true;
+	}
+    else if (_status == READY && _numReady == _network->getNumPlayers() && _isHost) {
+        CULog("GAME START MESSAGE SENT");
+        pushOutEvent(GameStateEvent::allocGameStart());
+    }
     else if (state == NetcodeConnection::State::NEGOTIATING) {
         _status = Status::CONNECTING;
         return true;
@@ -106,7 +119,9 @@ bool NetEventController::checkConnection() {
 }
 
 void NetEventController::processReceivedEvent(const std::shared_ptr<NetEvent>& e) {
-    if (_status == INGAME){
+    if (auto game = std::dynamic_pointer_cast<GameStateEvent>(e)) {
+        processGameStateEvent(game);
+    } else if (_status == INGAME){
         if (auto phys = std::dynamic_pointer_cast<PhysSyncEvent>(e)) {
             if(_physEnabled)
 			    _physController->processPhysSyncEvent(phys);
@@ -120,29 +135,22 @@ void NetEventController::processReceivedEvent(const std::shared_ptr<NetEvent>& e
             _inEventQueue.push(e);
         } 
     }
-    else if (auto game = std::dynamic_pointer_cast<GameStateEvent>(e)) {
-        processGameStateEvent(game);
-    }
 }
 
 void NetEventController::processGameStateEvent(const std::shared_ptr<GameStateEvent>& e) {
     CULog("GAME STATE %d, CUR STATE %d", e->getType(), _status);
-    if (_status == CONNECTED && e->getType() == GameStateEvent::UID_ASSIGN) {
+    if (_status == INSESSION && e->getType() == GameStateEvent::UID_ASSIGN) {
         _shortUID = e->getShortUID();
-        _status = INSESSION;
+        CULog("THE UID ASSIGNED IS %x", _shortUID);
     }
     if (_status == READY && e->getType() == GameStateEvent::GAME_START) {
         _status = INGAME;
         _startGameTimeStamp = _appRef->getUpdateCount();
     }
     if (_isHost) {
-        if ((_status == INSESSION || _status == READY) && e->getType() == GameStateEvent::CLIENT_RDY) {
+        if (e->getType() == GameStateEvent::CLIENT_RDY) {
             _numReady++;
-        }
-        if (_numReady == _network->getNumPlayers()) {
-            _status == READY;
-            CULog("GAME START MESSAGE SENT");
-            pushOutEvent(GameStateEvent::allocGameStart());
+            CULog("RECEIVED RDY FROM %s", e->getSourceId().c_str());
         }
     }
     CULog("FINISHED STATE %d", _status);
@@ -151,7 +159,7 @@ void NetEventController::processGameStateEvent(const std::shared_ptr<GameStateEv
 void NetEventController::processReceivedData(){
     _network->receive([this](const std::string source,
         const std::vector<std::byte>& data) {
-        CULog("DATA %d, CUR STATE %d", data[0], _status);
+        CULog("DATA %d, CUR STATE %d, SOURCE %s", data[0], _status, source.c_str());
         processReceivedEvent(unwrap(data, source)); 
     });
 }

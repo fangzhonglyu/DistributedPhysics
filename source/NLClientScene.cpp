@@ -177,8 +177,6 @@ void ClientScene::updateText(const std::shared_ptr<scene2::Button>& button, cons
  * @param timestep  The amount of time (in seconds) since the last frame
  */
 void ClientScene::update(float timestep) {
-    _network->updateNet();
-    
     // Do this last for button safety
     configureStartButton();
     if(_network->getStatus() == NetEventController::Status::CONNECTED || _network->getStatus() == NetEventController::Status::INSESSION){

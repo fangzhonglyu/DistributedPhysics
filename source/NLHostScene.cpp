@@ -190,7 +190,6 @@ void HostScene::updateText(const std::shared_ptr<scene2::Button>& button, const 
  */
 void HostScene::update(float timestep) {
     // We have written this for you this time
-    _network->updateNet();
     if(_network->getStatus() == NetEventController::Status::CONNECTED){
         if (!clicked) {
             updateText(_startgame, "Start Game");

@@ -56,7 +56,7 @@ void RocketApp::onStartup() {
     AudioEngine::start(24);
     _assets->loadDirectoryAsync("json/assets.json",nullptr);
     
-    cugl::net::NetworkLayer::start(net::NetworkLayer::Log::VERBOSE);
+    cugl::net::NetworkLayer::start(net::NetworkLayer::Log::INFO);
     
     Application::onStartup(); // YOU MUST END with call to parent
 }
@@ -127,6 +127,10 @@ void RocketApp::onResume() {
 #if USING_PHYSICS
 
 void RocketApp::preUpdate(float timestep){
+    if(_network){
+        _network->updateNet();
+	}
+
     if (_status == LOAD && _loading.isActive()) {
         _loading.update(0.01f);
     }
@@ -224,10 +228,9 @@ void RocketApp::updateMenuScene(float timestep) {
  */
 void RocketApp::updateHostScene(float timestep) {
     _hostgame.update(timestep);
-    if (_network->getStatus() == NetEventController::Status::INSESSION) {
+    if (_network->getStatus() == NetEventController::Status::INSESSION && _network->getShortUID()) {
         _gameplay.init(_assets, _network, true);
         _network->markReady();
-        CULog("DONE ONCE");
     }
     else if (_network->getStatus() == NetEventController::Status::INGAME) {
         _hostgame.setActive(false);
@@ -252,7 +255,7 @@ void RocketApp::updateHostScene(float timestep) {
  */
 void RocketApp::updateClientScene(float timestep) {
     _joingame.update(timestep);
-    if (_network->getStatus() == NetEventController::Status::INSESSION) {
+    if (_network->getStatus() == NetEventController::Status::INSESSION && _network->getShortUID()) {
         _gameplay.init(_assets, _network, false);
         _network->markReady();
     }

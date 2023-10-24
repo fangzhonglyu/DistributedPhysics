@@ -73,12 +73,12 @@ class GameStateEvent : public NetEvent {
 public:
     enum Type
     {
-        UID_ASSIGN,
-        CLIENT_RDY,
-        GAME_START,
-        GAME_RESET,
-        GAME_PAUSE,
-        GAME_RESUME
+        UID_ASSIGN = 100,
+        CLIENT_RDY = 101,
+        GAME_START = 102,
+        GAME_RESET = 103,
+        GAME_PAUSE = 104,
+        GAME_RESUME = 105
     };
 protected:
     Type _type;
