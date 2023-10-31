@@ -504,12 +504,16 @@ void GameScene::populate(bool isInit) {
         wallsprite2 = scene2::PolygonNode::allocWithTexture(image,wall2);
         
 #pragma mark : Crates
-        Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-4) + 2, _rand() % (int)(DEFAULT_HEIGHT-4) + 2);
+        float f1 = _rand() % (int)(DEFAULT_WIDTH - 4) + 2; 
+        float f2 = _rand() % (int)(DEFAULT_HEIGHT - 4) + 2;
+        Vec2 boxPos(f1, f2);
         _red = addCrateAt(boxPos,true);
         
         for (int ii = 0; ii < NUM_CRATES; ii++) {
+            f1 = _rand() % (int)(DEFAULT_WIDTH - 6) + 3;
+            f2 = _rand() % (int)(DEFAULT_HEIGHT - 6) + 3;
             // Pick a crate and random and generate the key
-            Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-6) + 3, _rand() % (int)(DEFAULT_HEIGHT-6) + 3);
+            Vec2 boxPos(f1, f2);
             addCrateAt(boxPos,true);
         }
         

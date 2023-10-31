@@ -8,8 +8,6 @@
 #include "CUNetEventController.h"
 #include "CULWSerializer.h"
 
-#define MAX_OUT_MSG 1000
-#define MAX_OUT_BYTES 10000000
 #define MIN_MSG_LENGTH sizeof(std::byte)+sizeof(Uint64)
 
 using namespace cugl::net;
@@ -35,11 +33,13 @@ void NetEventController::startGame() {
     }
 }
 
-void NetEventController::markReady() {
-    if (_status == Status::INSESSION && _shortUID) {
+bool NetEventController::markReady() {
+    if (_status == Status::HANDSHAKE && _shortUID) {
 		_status = Status::READY;
 		pushOutEvent(GameStateEvent::allocReady());
+        return true;
 	}
+    return false;
 }
 
 bool NetEventController::connectAsHost() {
@@ -76,6 +76,15 @@ void NetEventController::disconnect() {
     _network = nullptr;
     _shortUID = 0;
     _status = Status::IDLE;
+    _physEnabled = false;
+    _isHost = false;
+    _startGameTimeStamp = 0;
+    _numReady = 0;
+    _outEventQueue.clear();
+    while (!_inEventQueue.empty()) {
+        _inEventQueue.pop();
+    }
+    _physController = nullptr;
 }
 
 bool NetEventController::checkConnection() {
@@ -89,7 +98,7 @@ bool NetEventController::checkConnection() {
         return true;
     }
     else if (_status == CONNECTED && state == NetcodeConnection::State::INSESSION) {
-		_status = Status::INSESSION;
+		_status = Status::HANDSHAKE;
         if (_isHost) {
             auto players = _network->getPlayers();
             Uint32 shortUID = 1;
@@ -139,7 +148,7 @@ void NetEventController::processReceivedEvent(const std::shared_ptr<NetEvent>& e
 
 void NetEventController::processGameStateEvent(const std::shared_ptr<GameStateEvent>& e) {
     CULog("GAME STATE %d, CUR STATE %d", e->getType(), _status);
-    if (_status == INSESSION && e->getType() == GameStateEvent::UID_ASSIGN) {
+    if (_status == HANDSHAKE && e->getType() == GameStateEvent::UID_ASSIGN) {
         _shortUID = e->getShortUID();
         CULog("THE UID ASSIGNED IS %x", _shortUID);
     }
@@ -159,7 +168,7 @@ void NetEventController::processGameStateEvent(const std::shared_ptr<GameStateEv
 void NetEventController::processReceivedData(){
     _network->receive([this](const std::string source,
         const std::vector<std::byte>& data) {
-        CULog("DATA %d, CUR STATE %d, SOURCE %s", data[0], _status, source.c_str());
+        //CULog("DATA %d, CUR STATE %d, SOURCE %s", data[0], _status, source.c_str());
         processReceivedEvent(unwrap(data, source)); 
     });
 }
@@ -167,15 +176,15 @@ void NetEventController::processReceivedData(){
 void NetEventController::sendQueuedOutData(){
     int msgCount = 0;
     int byteCount = 0;
-    while (!_outEventQueue.empty()) {
-        auto e = _outEventQueue.front();
+    for(auto it = _outEventQueue.begin(); it != _outEventQueue.end(); it++){
+        auto e = *(it);
         auto wrapped = wrap(e);
         msgCount++;
         byteCount += wrapped.size();
-        //CULog("flag: %x", (std::byte)getType(*e));
+        //CULog("flag: %x", (std::byte)getType(*e))
         _network->broadcast(wrap(e));
-        _outEventQueue.pop();
     }
+    _outEventQueue.clear();
 }
 
 void NetEventController::updateNet() {
@@ -214,7 +223,7 @@ std::shared_ptr<NetEvent> NetEventController::popInEvent() {
 }
 
 void NetEventController::pushOutEvent(const std::shared_ptr<NetEvent>& e) {
-	_outEventQueue.push(e);
+	_outEventQueue.push_back(e);
 }
 
 std::shared_ptr<NetEvent> NetEventController::unwrap(const std::vector<std::byte>& data, std::string source) {

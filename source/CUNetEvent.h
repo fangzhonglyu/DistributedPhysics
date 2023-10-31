@@ -31,7 +31,7 @@ private:
     /** The ID of the sender. */
     std::string _sourceID;
 
-    virtual void setMetaData(Uint64 eventTimeStamp, Uint64 receiveTimeStamp, const std::string sourceID) final {
+    void setMetaData(Uint64 eventTimeStamp, Uint64 receiveTimeStamp, const std::string sourceID) {
         _eventTimeStamp = eventTimeStamp;
         _receiveTimeStamp = receiveTimeStamp;
         _sourceID = sourceID;

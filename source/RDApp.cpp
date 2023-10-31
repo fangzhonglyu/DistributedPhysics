@@ -228,7 +228,7 @@ void RocketApp::updateMenuScene(float timestep) {
  */
 void RocketApp::updateHostScene(float timestep) {
     _hostgame.update(timestep);
-    if (_network->getStatus() == NetEventController::Status::INSESSION && _network->getShortUID()) {
+    if (_network->getStatus() == NetEventController::Status::HANDSHAKE && _network->getShortUID()) {
         _gameplay.init(_assets, _network, true);
         _network->markReady();
     }
@@ -255,7 +255,7 @@ void RocketApp::updateHostScene(float timestep) {
  */
 void RocketApp::updateClientScene(float timestep) {
     _joingame.update(timestep);
-    if (_network->getStatus() == NetEventController::Status::INSESSION && _network->getShortUID()) {
+    if (_network->getStatus() == NetEventController::Status::HANDSHAKE && _network->getShortUID()) {
         _gameplay.init(_assets, _network, false);
         _network->markReady();
     }

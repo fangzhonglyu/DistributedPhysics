@@ -202,7 +202,7 @@ void HostScene::update(float timestep) {
 		_gameid->setText(hex2dec(_network->getRoomID()));
         _player->setText(std::to_string(_network->getNumPlayers()));
 	}
-    if (_network->getStatus() == NetEventController::Status::INSESSION) {
+    if (_network->getStatus() == NetEventController::Status::HANDSHAKE) {
         _startgame->deactivate();
         updateText(_startgame, "Starting");
     }
