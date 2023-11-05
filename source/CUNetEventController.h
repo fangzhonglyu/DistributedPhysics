@@ -110,19 +110,21 @@ protected:
      */
 
     /**
-     * Unwraps the a byte vector data into a NetEvent. Called only on outbound events.
-     *
+     * Unwraps the a byte vector data into a NetEvent.
+     * 
      * The controller automatically detects the type of event, spawns a new 
      * empty instance of that event, and calls the event's 
-     * {@link NetEvent#deserialize()} method.
+     * {@link NetEvent#deserialize()} method. This method is only called on 
+     * outbound events.
      */
     std::shared_ptr<NetEvent> unwrap(const std::vector<std::byte>& data,std::string source);
 
     /**
-     * Wraps a NetEvent into a byte vector. Called only on inbound events.
+     * Wraps a NetEvent into a byte vector. 
      *
      * The controller calls the event's {@link NetEvent#serialize()} method 
-     * and packs the event into byte data.
+     * and packs the event into byte data. This method is only on inbound 
+     * events.
      */
     const std::vector<std::byte> wrap(const std::shared_ptr<NetEvent>& e);
     
@@ -150,7 +152,7 @@ protected:
     void processGameStateEvent(const std::shared_ptr<GameStateEvent>& e);
 
     /**
-     * Checks the connection status and updates the controller status.
+     * This method checks the connection status and updates the controller status.
      */
     bool checkConnection();
     
@@ -188,7 +190,7 @@ protected:
 
 public:
     /**
-     * Constructs a new NetEventController. Does not perform any initialization.
+     * Constructs a new NetEventController without any initialization.
      */
     NetEventController(void):
         _appRef{ nullptr },
@@ -235,8 +237,9 @@ public:
     bool init(const std::shared_ptr<cugl::AssetManager>& assets);
 
     /**
-     * Allocates and initializes a new NetEventController instance. Returns 
-     * nullptr if initialization failed.
+     * Allocates and initializes a new NetEventController instance. 
+     *
+     * Returns nullptr if initialization failed.
      */
     static std::shared_ptr<NetEventController> alloc(const std::shared_ptr<cugl::AssetManager>& assets) {
 		std::shared_ptr<NetEventController> result = std::make_shared<NetEventController>();
@@ -244,14 +247,17 @@ public:
 	}
 
     /**
-     * Connect to a new lobby as host. If successful, the controller status
-     * changes to CONNECTED, and the {@link _roomid} is set to the lobby id.
+     * Connect to a new lobby as host. 
+     *
+     * If successful, the controller status changes to CONNECTED, and the
+     * {@link _roomid} is set to the lobby id.
      */
     bool connectAsHost();
 
     /**
-     * Connect to an existing lobby as client. If successful, the controller
-     * status changes to CONNECTED.
+     * Connect to an existing lobby as client. 
+     *
+     * If successful, the controller status changes to CONNECTED.
      */
     bool connectAsClient(std::string roomID);
 
@@ -345,17 +351,18 @@ public:
     Uint32 getShortUID() const { return _shortUID; }
     
     /**
-     * Starts handshake process for starting game. Once the handshake is 
-     * finished, the controller changes status to INGAME, starts sending 
-     * synchronization events if physics is enabled.
+     * Starts handshake process for starting game. 
+     
+     * Once the handshake is finished, the controller changes status to
+     * INGAME, starts sending synchronization events if physics is enabled.
      */
     void startGame();
 
     /**
-     * Marks the client as ready for game start. Only valid after receiving 
-     * shortUID from host.
-     * 
-     * Returns true if the mark was successful. And false otherwise. 
+     * Marks the client as ready for game start. 
+     
+     * Returns true if the mark was successful. And false otherwise. Only 
+     * valid after receiving shortUID from host.
      */
     bool markReady();
 
@@ -365,8 +372,9 @@ public:
     void updateNet();
 
     /**
-     * Attaches a new NetEvent type to the controller. This allows the 
-     * controller the receive and send custom NetEvent classes.
+     * Attaches a new NetEvent type to the controller. 
+     
+     * This allows the controller the receive and send custom NetEvent classes.
      * 
      * @param T The event type to be attached, must be a subclass of NetEvent.
      */
@@ -379,9 +387,11 @@ public:
     }
 
     /**
-     * Whether there are remaining custom inbound events waiting to be 
-     * processed by outside classes. Inbound events are preserved across
-     * updates, and only cleared by {@link popInEvent()}.
+     * Returns if there are remaining custom inbound events.
+     *
+     * Thhe events in this queue is to be polled and processed by outside
+     * classes. Inbound events are preserved acrossupdates, and only cleared
+     * by {@link popInEvent()}.
      */
     bool isInAvailable();
 
@@ -393,8 +403,10 @@ public:
     std::shared_ptr<NetEvent> popInEvent();
 
     /**
-     * Queues an outbound event to be sent to peers. Queued events are sent
-     * when {@link updateNet()} is called. and cleared after sending.
+     * Queues an outbound event to be sent to peers. 
+     * 
+     * Queued events are sent when {@link updateNet()} is called. and cleared
+     * after sending.
      */
     void pushOutEvent(const std::shared_ptr<NetEvent>& e);
 };

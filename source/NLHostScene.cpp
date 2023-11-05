@@ -1,5 +1,5 @@
 //
-//  NLHostScene.cp
+//  NLHostScene.cpp
 //  Network Lab
 //
 //  This class represents the scene for the host when creating a game. Normally

@@ -1,9 +1,10 @@
 //
-//  Interpolator.cpp
-//  Rocket
+//  CUNetPhysicsController.h
+//  Networked Physics Library
 //
 //  Created by Barry Lyu on 6/28/23.
 //
+
 
 #include "Interpolator.h"
 
@@ -12,19 +13,6 @@
 #define ITPR_METHOD 0
 
 using namespace cugl;
-
-//enum Type
-//{
-//    OBJ_CREATION,
-//    OBJ_DELETION,
-//    OBJ_BODY_TYPE,
-//    OBJ_POSITION,
-//    OBJ_VELOCITY,
-//    OBJ_ANGLE,
-//    OBJ_ANGULAR_VEL,
-//    OBJ_BOOL_CONSTS,
-//    OBJ_FLOAT_CONSTS
-//};
 
 void NetPhysicsController::processPhysObjEvent(const std::shared_ptr<PhysObjEvent>& event) {
     if (event->getSourceId() == "")
@@ -49,6 +37,7 @@ void NetPhysicsController::processPhysObjEvent(const std::shared_ptr<PhysObjEven
     auto obj = _world->getIdToObj().at(event->getObjId());
 
     if (event->getType() == PhysObjEvent::Type::OBJ_DELETION) {
+        _cache.erase(obj);
         _world->removeObstacle(obj.get());
         if (_sharedObsToNodeMap.count(obj)) {
             _sharedObsToNodeMap.at(obj)->removeFromParent();
@@ -107,6 +96,19 @@ std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode
 		_linkSceneToObsFunc(pair.first, pair.second);
     _outEvents.push_back(PhysObjEvent::allocCreation(factoryID,objId,bytes));
     return pair;
+}
+
+void NetPhysicsController::removeSharedObstacle(std::shared_ptr<physics2::Obstacle> obj) {
+    auto map = _world->getObjToId();
+    if (map.count(obj)) {
+		Uint64 objId = map.at(obj);
+		_outEvents.push_back(PhysObjEvent::allocDeletion(objId));
+		_world->removeObstacle(obj.get());
+		if (_sharedObsToNodeMap.count(obj)) {
+			_sharedObsToNodeMap.at(obj)->removeFromParent();
+			_sharedObsToNodeMap.erase(obj);
+		}
+	}
 }
 
 void NetPhysicsController::processPhysSyncEvent(const std::shared_ptr<PhysSyncEvent>& event) {
