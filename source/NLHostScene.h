@@ -18,6 +18,8 @@
 
 #define PING_TEST_COUNT 5
 
+using namespace cugl::netphysics;
+
 /**
  * This class provides the interface to make a new game.
  *

@@ -33,7 +33,7 @@
 #include <sstream>
 
 using namespace cugl;
-
+using namespace cugl::netphysics;
 
 #pragma mark -
 #pragma mark Level Geography
@@ -201,7 +201,7 @@ _isHost(false)
  *
  * @return true if the controller is initialized properly, false otherwise.
  */
-bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const std::shared_ptr<NetEventController> network, bool isHost) {
+bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const std::shared_ptr<cugl::netphysics::NetEventController> network, bool isHost) {
     return init(assets, Rect(0, 0, DEFAULT_WIDTH, DEFAULT_HEIGHT), Vec2(0, DEFAULT_GRAVITY), network, isHost);
 }
 

@@ -17,8 +17,7 @@
 #include "NLClientScene.h"
 
 using namespace cugl;
-using namespace cugl::net;
-using namespace std;
+using namespace cugl::netphysics;
 
 #pragma mark -
 #pragma mark Level Layout

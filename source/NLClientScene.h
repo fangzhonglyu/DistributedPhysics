@@ -16,6 +16,8 @@
 #include <vector>
 #include "CUNetEventController.h"
 
+using namespace cugl::netphysics;
+
 /**
  * This class provides the interface to join an existing game.
  *

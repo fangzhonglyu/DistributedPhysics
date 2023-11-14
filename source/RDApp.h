@@ -21,6 +21,8 @@
 #include "NLHostScene.h"
 #include "CUNetEventController.h"
 
+using namespace cugl::netphysics;
+
 /**
  * This class represents the application root for the ship demo.
  */

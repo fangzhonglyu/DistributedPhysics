@@ -34,10 +34,10 @@
 #include "RDInput.h"
 #include "NetworkData.h"
 #include "RDNetwork.h"
-#include "Interpolator.h"
-#include "CUNetEventController.h"
 
-class CrateFactory : public ObstacleFactory {
+using namespace cugl::netphysics;
+
+class CrateFactory : public cugl::netphysics::ObstacleFactory {
 public:
     std::shared_ptr<AssetManager> _assets;
     std::mt19937 _rand;
