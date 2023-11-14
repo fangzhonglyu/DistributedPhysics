@@ -19,7 +19,6 @@
 #include "NLMenuScene.h"
 #include "NLClientScene.h"
 #include "NLHostScene.h"
-#include "CUNetEventController.h"
 
 using namespace cugl::netphysics;
 

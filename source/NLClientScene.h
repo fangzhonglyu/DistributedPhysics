@@ -14,7 +14,6 @@
 #define __NL_CLIENT_SCENE_H__
 #include <cugl/cugl.h>
 #include <vector>
-#include "CUNetEventController.h"
 
 using namespace cugl::netphysics;
 

@@ -13,7 +13,6 @@
 #ifndef __NL_HOST_SCENE_H__
 #define __NL_HOST_SCENE_H__
 #include <cugl/cugl.h>
-#include "CUNetEventController.h"
 #include <vector>
 
 #define PING_TEST_COUNT 5
