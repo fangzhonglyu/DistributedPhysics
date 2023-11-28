@@ -1,21 +1,12 @@
 //
 //  RDGameScene.h
-//  Rocket Demo
+//  Networked Crate Demo
 //
-//  This is the most important class in this demo.  This class manages the
-//  gameplay for this demo.  It also handles collision detection. There is not
-//  much to do for collisions; our ObstacleWorld class takes care of all
-//  of that for us.  This controller mainly transforms input into gameplay.
+//  This is a demo based on the original Rocket Demo, this demo is made in
+//  addition to the Rocket Demo as a tutorial to the networked physics library.
 //
-//  You will notice that we do not use a Scene asset this time.  While we could
-//  have done this, we wanted to highlight the issues of connecting physics
-//  objects to scene graph objects.  Hence we include all of the API calls.
-//
-//  WARNING: There are a lot of shortcuts in this design that will do not adapt
-//  well to data driven design.  This demo has a lot of simplifications to make
-//  it a bit easier to see how everything fits together.  However, the model
-//  classes and how they are initialized will need to be changed if you add
-//  dynamic level loading.
+//  The majority of this Demo is similar to the rocket demo, except for the
+//  physics-related methods.
 //
 //  This file is based on the CS 3152 PhysicsDemo Lab by Don Holden, 2007
 //
@@ -37,30 +28,64 @@
 
 using namespace cugl::netphysics;
 
+/**
+ * The factory class for crate objects.
+ *
+ * This class is used to support automatically syncing newly added obstacle mid-simulation.
+ * Obstacles added throught the ObstacleFactory class from one client will be added to all
+ * clients in the simulations.
+ */
 class CrateFactory : public cugl::netphysics::ObstacleFactory {
 public:
+    /** Pointer to the AssetManager for texture access, etc. */
     std::shared_ptr<AssetManager> _assets;
+    /** Deterministic random generator for crate type */
     std::mt19937 _rand;
+    /** Serializer for supporting parameters */
     LWSerializer _serializer;
+    /** Deserializer for supporting parameters */
     LWDeserializer _deserializer;
 
+    /**
+     * Allocates a new instance of the factory using the given AssetManager.
+     */
     static std::shared_ptr<CrateFactory> alloc(std::shared_ptr<AssetManager>& assets) {
+        // TODO: make a new CrateFactory object, call init() on it, and return it.
         auto f = std::make_shared<CrateFactory>();
         f->init(assets);
         return f;
     };
 
+    /**
+     * Initializes empty factories using the given AssetManager.
+     */
     void init(std::shared_ptr<AssetManager>& assets) {
         _assets = assets;
         _rand.seed(0xdeadbeef);
     }
-
+    
+    /**
+     * Generate a pair of Obstacle and SceneNode using the given parameters
+     */
     std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> createObstacle(Vec2 pos, float scale);
 
     /**
-     * Deserialize the params and call normal function.
+     * Helper method for converting normal parameters into byte vectors used for syncing.
+     */
+    std::shared_ptr<std::vector<std::byte>> serializeParams(Vec2 pos, float scale) {
+        // TODO: Use _serializer to serialize pos and scale
+        _serializer.reset();
+        _serializer.writeFloat(pos.x);
+        _serializer.writeFloat(pos.y);
+        _serializer.writeFloat(scale);
+        return std::make_shared<std::vector<std::byte>>(_serializer.serialize());
+    }
+    
+    /**
+     * Generate a pair of Obstacle and SceneNode using serialized parameters.
      */
     std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> createObstacle(const std::vector<std::byte>& params) override {
+        // TODO: Use _deserializer to deserialize byte vectors packed by {@link serializeParams()} and call the regular createObstacle() method with them.
         _deserializer.reset();
         _deserializer.receive(params);
         float x = _deserializer.readFloat();
@@ -68,17 +93,6 @@ public:
         Vec2 pos = Vec2(x,y);
         float scale = _deserializer.readFloat();
         return createObstacle(pos, scale);
-    }
-
-    /**
-     * Serialize the params
-     */
-    std::shared_ptr<std::vector<std::byte>> serializeParams(Vec2 pos, float scale) {
-        _serializer.reset();
-        _serializer.writeFloat(pos.x);
-        _serializer.writeFloat(pos.y);
-        _serializer.writeFloat(scale);
-        return std::make_shared<std::vector<std::byte>>(_serializer.serialize());
     }
 };
 

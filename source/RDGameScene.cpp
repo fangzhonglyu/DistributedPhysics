@@ -143,31 +143,41 @@ float GOAL_POS[] = { 6, 12};
 /** Threshold for generating sound on collision */
 #define SOUND_THRESHOLD     3
 
+/**
+ * Generate a pair of Obstacle and SceneNode using the given parameters
+ */
 std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> CrateFactory::createObstacle(Vec2 pos, float scale) {
+    
+    //Choose randomly between wooden crates and iron crates.
     int indx = (_rand() % 2 == 0 ? 2 : 1);
     std::string name = (CRATE_PREFIX "0") + std::to_string(indx);
-
-    // Create the sprite for this crate
     auto image = _assets->get<Texture>(name);
 
     Size boxSize(image->getSize() / scale / 2.f);
+    
+    // TODO: allocate a box obstacle at pos with boxSize, set its angleSnap to 0, debugColor to DYNAMIC_COLOR, density to CRATE_DENSITY, friction to CRATE_FRICTION, and restitution to BASIC_RESTITUTION, after everything is set, make the object shared by calling setShared().
+    
+    // NOTE: When an Obstacle is shared, function calls that change its state are monitored and automatically synchronized. However, every client calling this method is going to run the code above setting the properties. We don't want to share them redundantly, so sharing is turned on afterwards.
+    
     auto crate = physics2::BoxObstacle::alloc(pos, boxSize);
-    crate->setShared(false);
-    // ===== BEGIN NON_SHARED BLOCK =====
+    
     crate->setDebugColor(DYNAMIC_COLOR);
     crate->setAngleSnap(0); // Snap to the nearest degree
-
+    
     // Set the physics attributes
     crate->setDensity(CRATE_DENSITY);
     crate->setFriction(CRATE_FRICTION);
     crate->setAngularDamping(CRATE_DAMPING);
     crate->setRestitution(BASIC_RESTITUTION);
 
+    crate->setShared(true);
+    
+    // TODO: allocate a PolygonNode from image, set its anchor to center, and scale to 0.5f. Lastly return the pair of Obstacle and sceneNode.
+    
     auto sprite = scene2::PolygonNode::allocWithTexture(image);
     sprite->setAnchor(Vec2::ANCHOR_CENTER);
     sprite->setScale(0.5f);
-    crate->setShared(true);
-    // ====== END NON_SHARED BLOCK ======
+    
     return std::make_pair(crate, sprite);
 }
 
@@ -282,19 +292,12 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     _debugnode->setScale(_scale); // Debug node draws in PHYSICS coordinates
     _debugnode->setAnchor(Vec2::ANCHOR_BOTTOM_LEFT);
     _debugnode->setPosition(offset);
-
-    _winnode = scene2::Label::allocWithText("VICTORY!",_assets->get<Font>(PRIMARY_FONT));
-	_winnode->setAnchor(Vec2::ANCHOR_CENTER);
-    _winnode->setPosition(dimen/2.0f);
-    _winnode->setForeground(STATIC_COLOR);
-    _winnode->setVisible(false);
     
     _chargeBar = std::dynamic_pointer_cast<scene2::ProgressBar>(assets->get<scene2::SceneNode>("load_bar"));
     _chargeBar->setPosition(Vec2(dimen.width/2.0f,dimen.height*0.9f));
     
     addChild(_worldnode);
     addChild(_debugnode);
-    addChild(_winnode);
     addChild(_chargeBar);
     
     _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
@@ -396,6 +399,7 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos, boo
     crate->setFriction(CRATE_FRICTION);
     crate->setAngularDamping(CRATE_DAMPING);
     crate->setRestitution(BASIC_RESTITUTION);
+    crate->setShared(true);
     
     auto sprite = scene2::PolygonNode::allocWithTexture(image);
     sprite->setAnchor(Vec2::ANCHOR_CENTER);
