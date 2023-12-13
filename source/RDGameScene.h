@@ -150,41 +150,10 @@ protected:
     /** Whether or not debug mode is active */
     bool _debug;
     
-    NetCache _netCache;
-    
-    NetCache _outCache;
-    
     std::shared_ptr<NetEventController> _network;
     
-//    cugl::net::NetcodeSerializer _serializer;
-//
-//    cugl::net::NetcodeDeserializer _deserializer;
-    
-    Serializer _serializer;
-
-    Deserializer _deserializer;
-    
-    Uint64 _counter;
-    
-    Uint64 _bound;
-    
-    std::shared_ptr<cugl::TextWriter> _writer;
-    
-    std::queue<Uint32> _objQueue;
-    
-    std::unordered_map<Uint32,std::shared_ptr<physics2::Obstacle>> _objMap;
-    
-    std::unordered_set<Uint32> _owned;
-    
-    std::unordered_map<std::shared_ptr<physics2::Obstacle>,std::shared_ptr<cugl::scene2::SceneNode>> _nodeMap;
-    
-    std::vector<std::vector<int>> _collisionMap;
-    
-    Uint32 _nextObj;
-    
     NetPhysicsController _itpr;
-    
-    std::shared_ptr<cugl::physics2::BoxObstacle> _red;
+
     
 #pragma mark Internal Object Management
     
@@ -221,8 +190,7 @@ protected:
     void linkSceneToObs(const std::shared_ptr<cugl::physics2::Obstacle>& obj,
         const std::shared_ptr<cugl::scene2::SceneNode>& node);
     
-    void addObstacleAlt(const std::shared_ptr<cugl::physics2::Obstacle>& obj,
-                     const std::shared_ptr<cugl::scene2::SceneNode>& node);
+    void fireCrate();
 
     /**
      * Returns the active screen size of this scene.
@@ -231,30 +199,6 @@ protected:
      * ratios
      */
     cugl::Size computeActiveSize() const;
-    
-private:
-    /**
-     * Processes data sent over the network.
-     *
-     * Once connection is established, all data sent over the network consistes of
-     * byte vectors. This function is a call back function to process that data.
-     * Note that this function may be called *multiple times* per animation frame,
-     * as the messages can come from several sources.
-     *
-     * Typically this is where players would communicate their names after being
-     * connected. In this lab, we only need it to do one thing: communicate that
-     * the host has started the game.
-     *
-     * @param source    The UUID of the sender
-     * @param data      The data received
-     */
-    void processData(const std::string source, const std::vector<std::byte>& data);
-    
-    void updateNet();
-    
-    void transmitNetdata(const netdata data);
-    
-    void queueNetdata(netdata data);
     
 public:
 #pragma mark -
@@ -386,8 +330,6 @@ public:
     virtual void preUpdate(float timestep);
     virtual void postUpdate(float timestep);
     virtual void fixedUpdate();
-    
-    void logData();
 
 #else
     /**
@@ -404,27 +346,6 @@ public:
      * Resets the status of the game so that we can play again.
      */
     void reset();
-    
-    /**
-     * Packs a fire input message
-     */
-    netdata packFire(Uint64 timestamp);
-    
-    netdata packFire(Uint64 timestamp,float power);
-    
-    std::shared_ptr<PhysSyncEvent> packState(Uint64 timestamp);
-    
-    netdata packReset(Uint64 timestamp);
-    
-    netdata packCannon(Uint64 timestamp);
-    
-    void processCannon(netdata data);
-    
-    void processFire(netdata data);
-    
-    void processState(netdata data);
-    
-    void processCache();
     
 #pragma mark -
 #pragma mark Collision Handling

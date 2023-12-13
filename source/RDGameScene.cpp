@@ -54,17 +54,6 @@ using namespace cugl::netphysics;
 /** To automate the loading of crate files */
 #define NUM_CRATES 100
 
-#define INPUT_DELAY 0
-
-#define LOG_MSGS 0
-
-#define SYNC_NUM 5
-
-#define PING 200.0f
-
-#define PING_STEP PING/1000.0f/(FIXED_TIMESTEP_S)
-
-#define LOG_POS 0
 
 // Since these appear only once, we do not care about the magic numbers.
 // In an actual game, this information would go in a data file.
@@ -262,9 +251,6 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     }
     
     _isHost = isHost;
-    if(LOG_MSGS || LOG_POS){
-        _writer = _writer->alloc(isHost?"log_host.txt":"log_client.txt");
-    }
 
     _network = network;
     
@@ -317,13 +303,6 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
 
     _factId = _network->getPhysController()->attachFactory(_crateFact);
     
-    _netCache.clear();
-    _serializer.reset();
-    _deserializer.reset();
-    
-    _counter = 0;
-    _bound = 0;
-    
     // XNA nostalgia
     Application::get()->setClearColor(Color4f::CORNFLOWER);
     return true;
@@ -342,10 +321,6 @@ void GameScene::dispose() {
         _winnode = nullptr;
         _complete = false;
         _debug = false;
-        if(LOG_MSGS || LOG_POS){
-            _writer->flush();
-            _writer->close();
-        }
         Scene2::dispose();
     }
 }
@@ -367,11 +342,6 @@ std::vector<std::shared_ptr<scene2::PolygonNode>> nodes;
  * This method disposes of the world and creates a new one.
  */
 void GameScene::reset() {
-    CULog("reset");
-    if(LOG_MSGS){
-        _writer->writeLine("reset");
-    }
-    _netCache.clear();
     _worldnode->removeAllChildren();
     _debugnode->removeAllChildren();
     setComplete(false);
@@ -409,10 +379,19 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos, boo
         nodes.push_back(sprite);
     }
     
-    _nodeMap.insert(std::make_pair(crate,sprite));
-    
     addObstacle(crate,sprite);   // PUT SAME TEXTURES IN SAME LAYER!!!
     return crate;
+}
+
+
+void GameScene::fireCrate() {
+    //TODO: write code for adding a new crate to the simulation, also sets its velocity in the same direction as the cannon is pointed.
+    auto cannon = _isHost ? _cannon1 : _cannon2;
+    auto params = _crateFact->serializeParams(cannon->getPosition(), _scale);
+    auto pair = _network->getPhysController()->addSharedObstacle(_factId, params);
+    float angle = cannon->getAngle() + M_PI_2;
+    Vec2 forward(SDL_cosf(angle), SDL_sinf(angle));
+    pair.first->setLinearVelocity(forward * 50 *_input.getFirePower());
 }
 
 
@@ -432,13 +411,7 @@ void GameScene::populate(bool isInit) {
     // have to completely reset the world
     Timestamp start;
     
-    _nextObj = 0;
-    _objQueue = std::queue<Uint32>();
-    _objMap.clear();
     _itpr.reset();
-    _collisionMap.clear();
-    _nodeMap.clear();
-    _owned.clear();
     
     _world = physics2::ObstacleWorld::alloc(Rect(0,0,DEFAULT_WIDTH,DEFAULT_HEIGHT),Vec2(0,DEFAULT_GRAVITY));
     _world->activateCollisionCallbacks(true);
@@ -511,7 +484,6 @@ void GameScene::populate(bool isInit) {
         float f1 = _rand() % (int)(DEFAULT_WIDTH - 4) + 2; 
         float f2 = _rand() % (int)(DEFAULT_HEIGHT - 4) + 2;
         Vec2 boxPos(f1, f2);
-        _red = addCrateAt(boxPos,true);
         
         for (int ii = 0; ii < NUM_CRATES; ii++) {
             f1 = _rand() % (int)(DEFAULT_WIDTH - 6) + 3;
@@ -553,19 +525,6 @@ void GameScene::populate(bool isInit) {
     if(isInit){
         addObstacle(wallobj1,wallsprite1);  // All walls share the same texture
         addObstacle(wallobj2,wallsprite2);  // All walls share the same texture
-    }
-    else{
-        addObstacleAlt(wallobj1,wallsprite1);  // All walls share the same texture
-        addObstacleAlt(wallobj2,wallsprite2);  // All walls share the same texture
-        for(int ii = 0; ii < NUM_CRATES; ii++){
-            //Vec2 boxPos(BOXES[2*ii], BOXES[2*ii+1]);
-            Vec2 boxPos(_rand() % (int)(DEFAULT_WIDTH-6) + 3, _rand() % (int)(DEFAULT_HEIGHT-6) + 3);
-            boxes[ii]->setPosition(boxPos);
-            boxes[ii]->setLinearVelocity(Vec2::ZERO);
-            boxes[ii]->setAngle(0);
-            boxes[ii]->setAngularVelocity(0);
-            addObstacleAlt(boxes[ii], nodes[ii]);
-        }
     }
     
     Vec2 canPos1 = ((Vec2)CAN1_POS);
@@ -626,309 +585,13 @@ void GameScene::linkSceneToObs(const std::shared_ptr<physics2::Obstacle>& obj,
 void GameScene::addObstacle(const std::shared_ptr<physics2::Obstacle>& obj,
     const std::shared_ptr<scene2::SceneNode>& node) {
     _world->addInitObstacle(obj);
-
-    _objQueue.push(_nextObj);
-    _objMap.insert(std::make_pair(_nextObj, obj));
-    obj->_id = _nextObj;
-    _nextObj++;
-    _collisionMap.push_back(std::vector<int>());
-
-    //obj->setDebugScene(_debugnode);
-
-    // Position the scene graph node (enough for static objects)
-    node->setPosition(obj->getPosition() * _scale);
-    _worldnode->addChild(node);
-
-    // Dynamic objects need constant updating
-    if (obj->getBodyType() == b2_dynamicBody) {
-        scene2::SceneNode* weak = node.get(); // No need for smart pointer in callback
-        obj->setListener([=](physics2::Obstacle* obs) {
-            float leftover = Application::get()->getLeftOver() / 1000000.f;
-            Vec2 pos = obs->getPosition() + leftover * obs->getLinearVelocity();
-            float angle = obs->getAngle() + leftover * obs->getAngularVelocity();
-            weak->setPosition(pos * _scale);
-            weak->setAngle(angle);
-            Color4 c = weak->getColor();
-            if (_itpr.isInSync(obj)) {
-                if (c.g >= 10)
-                    weak->setColor(c.subtract(0, 5, 5));
-            }
-            else {
-                if (c.g <= 240)
-                    weak->setColor(c.add(0, 5, 5));
-            }
-            });
-    }
-}
-
-void GameScene::addObstacleAlt(const std::shared_ptr<cugl::physics2::Obstacle>& obj,
-                    const std::shared_ptr<cugl::scene2::SceneNode>& node){
-    _world->addInitObstacle(obj);
-    
-    _objQueue.push(_nextObj);
-    _objMap.insert(std::make_pair(_nextObj,obj));
-    _nextObj++;
-    
-    node->setPosition(obj->getPosition()*_scale);
-    _worldnode->addChild(node);
-}
-
-netdata GameScene::packFire(Uint64 timestamp){
-    netdata data;
-    data.timestamp = timestamp;
-    data.flag = FIRE_INPUT_FLAG;
-    _serializer.reset();
-    _serializer.writeBool(_isHost);
-    auto cannon = _isHost ? _cannon1 : _cannon2;
-    float angle = cannon->getAngle() + M_PI_2;
-    _serializer.writeFloat(angle);
-    float firepower = _input.getFirePower();
-    _serializer.writeFloat(firepower);
-    data.data = _serializer.serialize();
-    auto pair = _network->getPhysController()->addSharedObstacle(_factId, _crateFact->serializeParams(cannon->getPosition(), _scale));
-    Vec2 forward(SDL_cosf(angle), SDL_sinf(angle));
-    pair.first->setLinearVelocity(forward * 50 * firepower);
-    //float delayMs = (timestamp-_counter)*FIXED_TIMESTEP_S*1000;
-    //CULog("Fire input at angle %f, power %f, cached for %llu, added delay of %.2fms",angle,firepower,timestamp,delayMs);
-    return data;
-}
-
-netdata GameScene::packFire(Uint64 timestamp, float power){
-    netdata data;
-    data.timestamp = timestamp;
-    data.flag = FIRE_INPUT_FLAG;
-    _serializer.reset();
-    _serializer.writeBool(_isHost);
-    auto cannon = _isHost ? _cannon1Node : _cannon2Node;
-    float angle = cannon->getAngle();
-    _serializer.writeFloat(angle);
-    _serializer.writeFloat(power);
-    data.data = _serializer.serialize();
-    return data;
-}
-
-netdata GameScene::packReset(Uint64 timestamp){
-    netdata data;
-    data.timestamp = timestamp;
-    data.flag = RESET_FLAG;
-    data.data = std::vector<std::byte>();
-    return data;
-}
-
-netdata GameScene::packCannon(Uint64 timestamp){
-    netdata data;
-    data.timestamp = timestamp;
-    data.flag = CANNON_FLAG;
-    _serializer.reset();
-    _serializer.writeBool(_isHost);
-    auto cannon = _isHost? _cannon1: _cannon2;
-    _serializer.writeFloat(cannon->getAngle());
-    data.data = _serializer.serialize();
-    return data;
+    linkSceneToObs(obj, node);
 }
 
 union {
     float f;
     uint32_t u;
 } f2u;
-
-void GameScene::processFire(netdata data){
-    //
-    //CUAssert(data.flag == FIRE_INPUT_FLAG);
-    //if(data.timestamp < _counter){
-    //    if(LOG_MSGS){
-    //        _writer->writeLine("Simulation Corrupted, State Synchronization Needed");
-    //    }
-    //    CULogError("Simulation Corrupted, State Synchronization Needed");
-    //}
-
-    //_deserializer.reset();
-    //_deserializer.receive(data.data);
-    //bool isHost = _deserializer.readBool();
-    //auto cannon = isHost ? _cannon1Node : _cannon2Node;
-    //float angle = _deserializer.readFloat() + M_PI_2;
-    //float firePower = _deserializer.readFloat();
-    //Vec2 forward(SDL_cosf(angle),SDL_sinf(angle));
-    //Vec2 pos = cannon->getPosition()/_scale+1.5f*forward;
-    //auto crate = addCrateAt(pos,false);
-    ////crate->setBodyType(b2_kinematicBody);
-    //crate->setLinearVelocity(forward*50*firePower);
-    //
-    //f2u.f = firePower;
-    //uint32_t fpu = f2u.u;
-    //f2u.f = angle;
-    //f2u.f = angle;
-    //uint32_t au = f2u.u;
-    //if(LOG_MSGS){
-    //    _writer->writeLine(cugl::strtool::format("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu));
-    //}
-    //CULog("Cannon %d fire, angle: %u, power: %u",isHost ? 1 : 2,au,fpu);
-}
-
-void GameScene::processState(netdata data){
-    //if(data.sourceID == ""){
-    //    //CULog("Ignoring state sync from self.");
-    //    return;
-    //}
-    //CUAssert(data.flag == STATE_SYNC_FLAG);
-    //if(data.timestamp < _counter){
-    //    if(LOG_MSGS){
-    //        _writer->writeLine("Outdated state, extrapolating");
-    //    }
-    //    //CULog("Outdated state, extrapolating");
-    //}
-    //_deserializer.reset();
-    //_deserializer.receive(data.data);
-    //Uint32 num = _deserializer.readUint32();
-    //for(int i = 0; i < num; i++){
-    //    Uint32 id = _deserializer.readUint32();
-    //    if(_owned.count(id)){
-    //        continue;
-    //    }
-    //    float x = _deserializer.readFloat();
-    //    float y = _deserializer.readFloat();
-    //    float vx = _deserializer.readFloat();
-    //    float vy = _deserializer.readFloat();
-    //    float angle = _deserializer.readFloat();
-    //    float angV = _deserializer.readFloat();
-    //    if(!_objMap.count(id)){
-    //        CULogError("unknown object");
-    //        return;
-    //    }
-    //    auto obj = _objMap.at(id);
-    //    float diff = (obj->getPosition()-Vec2(x,y)).length();
-    //    float angDiff = 10*abs(obj->getAngle()-angle);
-    //    int steps = SDL_max(1,SDL_min(30,SDL_max((int)(diff*30),(int)angDiff)));
-    //    
-    //    targetParam param;
-    //    param.targetVel = Vec2(vx,vy);
-    //    param.targetAngle = angle;
-    //    param.targetAngV = angV;
-    //    param.curStep = 0;
-    //    param.numSteps = steps;
-    //    param.P0 = obj->getPosition();
-    //    //param.P1 = param.P0;
-    //    param.P1 = obj->getPosition()+obj->getLinearVelocity()/10.f;
-    //    param.P3 = Vec2(x,y);
-    //    //param.P2 = param.P3;
-    //    param.P2 = param.P3;//-param.targetVel/10.f;
-    //    std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
-    //    _itpr.addSyncObject(obj, paramP);
-    //}
-}
-
-void GameScene::processCannon(netdata data){
-    //CUAssert(data.flag == CANNON_FLAG);
-    //_deserializer.reset();
-    //_deserializer.receive(data.data);
-    //bool which = _deserializer.readBool();
-    //if(which == _isHost)
-    //    return;
-    //CULog("CANNON,%llu",_counter);
-    //auto cannon =  which ? _cannon1:_cannon2;
-    //float angle = _deserializer.readFloat();
-    //float angDiff = 30*abs(cannon->getAngle()-angle);
-    //int steps = SDL_max(0,SDL_min(30,(int)angDiff));
-    //
-    //targetParam param;
-    //param.targetVel = Vec2(0,0);
-    //param.targetAngle = angle;
-    //param.targetAngV = 0;
-    //param.curStep = 0;
-    //param.numSteps = steps;
-    //param.P0 = cannon->getPosition();
-    //param.P1 = param.P0;
-    //param.P3 = param.P0;
-    //param.P2 = param.P0;
-    //
-    //std::shared_ptr<targetParam> paramP = std::make_shared<targetParam>(param);
-    //
-    //_itpr.addObject(cannon, paramP);
-//    std::vector<float> param = std::vector<float>();
-//    param.push_back(cannon->getX()); param.push_back(cannon->getY()); param.push_back(cannon->getVX()); param.push_back(cannon->getVY()); param.push_back(angle); param.push_back(0);
-//
-//    _itpr.addObject(cannon, param);
-}
-
-void GameScene::processCache(){
-    while(!_outCache.isEmpty() && _outCache.peek().receivedBy <= _counter){
-        netdata next = _outCache.pop();
-        transmitNetdata(next);
-    }
-    
-    if(_netCache.isEmpty()){
-        return;
-    }
-    
-    while(!_netCache.isEmpty()){
-        netdata next = _netCache.pop();
-        if(next.timestamp <= _bound){
-            continue;
-        }
-        if(LOG_MSGS){
-            _writer->writeLine(cugl::strtool::format("MESSAGE at %llu, received by %llu", next.timestamp, next.receivedBy));
-        }
-        if(next.flag != STATE_SYNC_FLAG && next.flag != CANNON_FLAG){
-            CULog("MESSAGE at %llu, received by %llu", next.timestamp, next.receivedBy);
-        }
-        switch (next.flag) {
-            case FIRE_INPUT_FLAG:
-                processFire(next);
-                break;
-            case RESET_FLAG:
-                _bound = next.timestamp;
-                reset();
-                break;
-            case STATE_SYNC_FLAG:
-                processState(next);
-                break;
-            case CANNON_FLAG:
-                processCannon(next);
-                break;
-            default:
-                CULogError("unknown flag %u", next.flag);
-                break;
-        }
-    }
-}
-
-void GameScene::updateNet(){
-    
-}
-
-void GameScene::transmitNetdata(const netdata data){
-    /*_serializer.reset();
-    _serializer.writeUint64(data.timestamp);
-    _serializer.writeUint32(data.flag);
-    auto arr = _serializer.serialize();
-    arr.insert(std::end(arr), std::begin(data.data), std::end(data.data));*/
-    //_netCache.push(data, _counter);
-    //_network->broadcast(arr);
-}
-
-void GameScene::queueNetdata(netdata data){
-    /*data.receivedBy = _counter + PING_STEP;
-    _outCache.push(data, _counter);
-    _netCache.push(data, _counter);*/
-}
-
-void GameScene::processData(const std::string source,
-                            const std::vector<std::byte>& data) {
-//    CULog(source.c_str());
-//    CULog("gotdata");
-    _deserializer.reset();
-    _deserializer.receive(data);
-    if(source == ""){
-        return;
-    }
-    netdata msg;
-    msg.timestamp = _deserializer.readUint64();
-    msg.sourceID = source;
-    msg.flag = _deserializer.readUint32();
-    msg.data = { data.begin() + 12, data.end()};
-    msg.receivedBy = _counter;
-    _netCache.push(msg, _counter);
-}
 
 #pragma mark -
 #pragma mark Physics Handling
@@ -947,25 +610,19 @@ void GameScene::preUpdate(float dt) {
 
     // Process the toggled key commands
     if (_input.didDebug()) { setDebug(!isDebug()); }
-    if (_input.didReset()) {
-        queueNetdata(packReset(_counter+INPUT_DELAY));
-    }
+
     if (_input.didExit()) {
         CULog("Shutting down");
         Application::get()->quit();
     }
     
     if (_input.didFire()) {
-        packFire(_counter + INPUT_DELAY);
+        fireCrate();
     }
     
-    for (std::vector<int>& v: _collisionMap){
-        v.clear();
-    }
     
     float turnRate = _isHost ? DEFAULT_TURN_RATE : -DEFAULT_TURN_RATE;
     auto cannon = _isHost ? _cannon1 : _cannon2;
-    //cannon->setAngularVelocity(_input.getVertical() * turnRate);
     cannon->setAngle(_input.getVertical() * turnRate + cannon->getAngle());
 }
 
@@ -974,32 +631,9 @@ void GameScene::postUpdate(float dt) {
 }
 
 void GameScene::fixedUpdate() {
-    queueNetdata(packCannon(_counter));
-    updateNet();
-    processCache();
-    /*if(_counter == 100 && _isHost){
-        queueNetdata(packFire(_counter+INPUT_DELAY,1.0f));
-    }
-    if(_counter == 200 && !_isHost){
-        queueNetdata(packFire(_counter+INPUT_DELAY,1.0f));
-    }*/
     _world->update(FIXED_TIMESTEP_S);
-    if(LOG_POS)
-        logData();
-    _counter++;
 }
 
-void GameScene::logData() {
-    _writer->writeLine(cugl::strtool::format("timestep %u",_counter));
-    for(Uint32 i = 0; i < _nextObj; i++){
-        auto obj = _objMap.at(i);
-        _writer->write(obj->getX());
-        _writer->write(",");
-        _writer->write(obj->getY());
-        _writer->write("\n");
-    }
-    _writer->write("\n");
-}
 
 #else
 /**

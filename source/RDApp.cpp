@@ -254,6 +254,8 @@ void RocketApp::updateHostScene(float timestep) {
  * @param timestep  The amount of time (in seconds) since the last frame
  */
 void RocketApp::updateClientScene(float timestep) {
+    //TODO 
+#pragma mark SOLUTION
     _joingame.update(timestep);
     if (_network->getStatus() == NetEventController::Status::HANDSHAKE && _network->getShortUID()) {
         _gameplay.init(_assets, _network, false);
@@ -270,6 +272,7 @@ void RocketApp::updateClientScene(float timestep) {
         _gameplay.dispose();
 		_status = MENU;
 	}
+#pragma mark END SOLUTION
 }
 
 /**
