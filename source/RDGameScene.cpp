@@ -136,7 +136,7 @@ float GOAL_POS[] = { 6, 12};
  * Generate a pair of Obstacle and SceneNode using the given parameters
  */
 std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> CrateFactory::createObstacle(Vec2 pos, float scale) {
-    
+#pragma mark BEGIN SOLUTION
     //Choose randomly between wooden crates and iron crates.
     int indx = (_rand() % 2 == 0 ? 2 : 1);
     std::string name = (CRATE_PREFIX "0") + std::to_string(indx);
@@ -168,6 +168,7 @@ std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode
     sprite->setScale(0.5f);
     
     return std::make_pair(crate, sprite);
+#pragma mark END SOLUTION
 }
 
 
@@ -300,6 +301,10 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
     _network->enablePhysics(_world, [=](const std::shared_ptr<physics2::Obstacle>& obs, const std::shared_ptr<scene2::SceneNode>& node) {
         this->linkSceneToObs(obs,node);
     });
+    
+    if(!isHost){
+        _network->getPhysController()->acquireObs(_cannon2, 0);
+    }
 
     _factId = _network->getPhysController()->attachFactory(_crateFact);
     
@@ -350,6 +355,8 @@ void GameScene::reset() {
 }
 
 std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos, bool original) {
+//TODO: CODE FOR ADDING AN initialized crate
+#pragma mark BEGIN SOLUTION
     // Pick a crate and random and generate the key
     int indx = (_rand() % 2 == 0 ? 2 : 1);
     std::stringstream ss;
@@ -381,6 +388,7 @@ std::shared_ptr<physics2::BoxObstacle> GameScene::addCrateAt(cugl::Vec2 pos, boo
     
     addObstacle(crate,sprite);   // PUT SAME TEXTURES IN SAME LAYER!!!
     return crate;
+#pragma mark END SOLUTION
 }
 
 
@@ -485,6 +493,7 @@ void GameScene::populate(bool isInit) {
         float f2 = _rand() % (int)(DEFAULT_HEIGHT - 4) + 2;
         Vec2 boxPos(f1, f2);
         
+        //
         for (int ii = 0; ii < NUM_CRATES; ii++) {
             f1 = _rand() % (int)(DEFAULT_WIDTH - 6) + 3;
             f2 = _rand() % (int)(DEFAULT_HEIGHT - 6) + 3;

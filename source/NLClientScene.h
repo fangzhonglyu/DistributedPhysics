@@ -42,6 +42,9 @@ protected:
     
     /** The network configuration */
     cugl::net::NetcodeConfig _config;
+    
+    /** Whether the back button had been clicked. */
+    bool _backClicked = false;
 
 public:
 #pragma mark -
@@ -102,6 +105,11 @@ public:
      * @param timestep  The amount of time (in seconds) since the last frame
      */
     void update(float timestep) override;
+    
+    /**
+     * Returns whether the back button has been clicked
+     */
+    bool getBackClicked() { return _backClicked; }
 
 private:
     /**

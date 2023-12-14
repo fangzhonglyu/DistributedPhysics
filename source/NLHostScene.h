@@ -43,7 +43,10 @@ protected:
     /** The players label (for updating) */
     std::shared_ptr<cugl::scene2::Label> _player;
 
-    bool clicked = false;
+    /** Whether the startGame button had been pressed. */
+    bool _startGameClicked = false;
+    /** Whether the back button had been pressed. */
+    bool _backClicked = false;
     
     /** The network configuration */
     cugl::net::NetcodeConfig _config;
@@ -117,13 +120,9 @@ public:
     void update(float timestep) override;
     
     /**
-     * Disconnects this scene from the network controller.
-     *
-     * Technically, this method does not actually disconnect the network controller.
-     * Since the network controller is a smart pointer, it is only fully disconnected
-     * when ALL scenes have been disconnected.
+     * Returns whether the back button is pressed
      */
-    void disconnect() { _network->disconnect(); }
+    bool getBackClicked() { return _backClicked; };
 
 private:
     /**
@@ -138,6 +137,11 @@ private:
      * @param text      The new text value
      */
     void updateText(const std::shared_ptr<cugl::scene2::Button>& button, const std::string text);
+    
+    /**
+     * This method prompts the network controller to start the game.
+     */
+    void startGame();
     
 };
 

@@ -127,10 +127,6 @@ void RocketApp::onResume() {
 #if USING_PHYSICS
 
 void RocketApp::preUpdate(float timestep){
-    if(_network){
-        _network->updateNet();
-	}
-
     if (_status == LOAD && _loading.isActive()) {
         _loading.update(0.01f);
     }
@@ -172,6 +168,9 @@ void RocketApp::postUpdate(float timestep) {
 void RocketApp::fixedUpdate() {
     if (_status == GAME) {
         _gameplay.fixedUpdate();
+    }
+    if(_network){
+        _network->updateNet();
     }
 }
 #else
@@ -228,7 +227,12 @@ void RocketApp::updateMenuScene(float timestep) {
  */
 void RocketApp::updateHostScene(float timestep) {
     _hostgame.update(timestep);
-    if (_network->getStatus() == NetEventController::Status::HANDSHAKE && _network->getShortUID()) {
+    if(_hostgame.getBackClicked()){
+        _status = MENU;
+        _hostgame.setActive(false);
+        _mainmenu.setActive(true);
+    }
+    else if (_network->getStatus() == NetEventController::Status::HANDSHAKE && _network->getShortUID()) {
         _gameplay.init(_assets, _network, true);
         _network->markReady();
     }
@@ -238,6 +242,7 @@ void RocketApp::updateHostScene(float timestep) {
         _status = GAME;
     }
     else if (_network->getStatus() == NetEventController::Status::NETERROR) {
+        _network->disconnect();
 		_hostgame.setActive(false);
 		_mainmenu.setActive(true);
         _gameplay.dispose();
@@ -254,10 +259,15 @@ void RocketApp::updateHostScene(float timestep) {
  * @param timestep  The amount of time (in seconds) since the last frame
  */
 void RocketApp::updateClientScene(float timestep) {
-    //TODO 
+    //TODO: write transition logic for client scene
 #pragma mark SOLUTION
     _joingame.update(timestep);
-    if (_network->getStatus() == NetEventController::Status::HANDSHAKE && _network->getShortUID()) {
+    if(_joingame.getBackClicked()){
+        _status = MENU;
+        _joingame.setActive(false);
+        _mainmenu.setActive(true);
+    }
+    else if (_network->getStatus() == NetEventController::Status::HANDSHAKE && _network->getShortUID()) {
         _gameplay.init(_assets, _network, false);
         _network->markReady();
     }
@@ -267,6 +277,7 @@ void RocketApp::updateClientScene(float timestep) {
         _status = GAME;
     }
     else if (_network->getStatus() == NetEventController::Status::NETERROR) {
+        _network->disconnect();
 		_joingame.setActive(false);
 		_mainmenu.setActive(true);
         _gameplay.dispose();

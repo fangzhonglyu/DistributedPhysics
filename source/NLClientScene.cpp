@@ -46,9 +46,6 @@ static std::string dec2hex(const std::string dec) {
     return strtool::to_hexstring(value,4);
 }
 
-
-#pragma mark -
-#pragma mark Provided Methods
 /**
  * Initializes the controller contents, and starts the game
  *
@@ -87,7 +84,7 @@ bool ClientScene::init(const std::shared_ptr<cugl::AssetManager>& assets, std::s
     _backout->addListener([this](const std::string& name, bool down) {
         if (down) {
             _network->disconnect();
-            setActive(false);
+            _backClicked = true;
         }
     });
 
@@ -97,11 +94,16 @@ bool ClientScene::init(const std::shared_ptr<cugl::AssetManager>& assets, std::s
             _gameid->releaseFocus();
         }
     });
-    
+
+/**
+ * TODO: Add an exit listenser for the _gameId textfield that calls the network controller to connect as a client (Remember to convert the string from decimal to hex)
+ */
+#pragma mark BEGIN SOLUTION
     _gameid->addExitListener([this](const std::string& name, const std::string& value) {
         _network->connectAsClient(dec2hex(value));
     });
-
+#pragma mark END SOLUTION
+    
     // Create the server configuration
     auto json = _assets->get<JsonValue>("server");
     _config.set(json);
@@ -133,11 +135,17 @@ void ClientScene::dispose() {
 void ClientScene::setActive(bool value) {
     if (isActive() != value) {
         Scene2::setActive(value);
+        
+        /**
+         * TODO: This is similar to HostScene. if value is true, you need to activate the _backout button, and set the clicked variable to false. However, you should start a connection this time. If the value is false, you should disconnect the network controller, and reset all buttons and textfields to their original state.
+         */
+#pragma mark BEGIN SOLUTION
         if (value) {
             _gameid->activate();
             _backout->activate();
             _player->setText("1");
             configureStartButton();
+            _backClicked = false;
             // Don't reset the room id
         } else {
             _gameid->deactivate();
@@ -147,7 +155,9 @@ void ClientScene::setActive(bool value) {
             // If any were pressed, reset them
             _startgame->setDown(false);
             _backout->setDown(false);
+            
         }
+#pragma mark END SOLUTION
     }
 }
 
@@ -166,8 +176,6 @@ void ClientScene::updateText(const std::shared_ptr<scene2::Button>& button, cons
 
 }
 
-#pragma mark -
-#pragma mark Student Methods
 /**
  * The method called to update the scene.
  *
@@ -190,7 +198,6 @@ void ClientScene::update(float timestep) {
  * networking.
  */
 void ClientScene::configureStartButton() {
-    // THIS IS WRONG. FIX ME
     if (_network->getStatus() == NetEventController::Status::IDLE) {
         _startgame->setDown(false);
         _startgame->activate();
