@@ -102,7 +102,7 @@ bool ClientScene::init(const std::shared_ptr<cugl::AssetManager>& assets, std::s
      * TODO: Call the network controller to connect as a client (Remember to convert the string from decimal to hex)
      */
 #pragma mark BEGIN SOLUTION
-        _network->connectAsClient(dec2hex(value));
+        throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
     });
 
@@ -143,23 +143,7 @@ void ClientScene::setActive(bool value) {
          * TODO: This is similar to HostScene. if value is true, you need to activate the _backout button, and set the clicked variable to false. However, you should start a connection this time. If the value is false, you should disconnect the network controller, and reset all buttons and textfields to their original state.
          */
 #pragma mark BEGIN SOLUTION
-        if (value) {
-            _gameid->activate();
-            _backout->activate();
-            _player->setText("1");
-            configureStartButton();
-            _backClicked = false;
-            // Don't reset the room id
-        } else {
-            _gameid->deactivate();
-            _startgame->deactivate();
-            _backout->deactivate();
-            //_network = nullptr;
-            // If any were pressed, reset them
-            _startgame->setDown(false);
-            _backout->setDown(false);
-            
-        }
+        throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
     }
 }

@@ -260,29 +260,8 @@ void NetApp::updateHostScene(float timestep) {
  */
 void NetApp::updateClientScene(float timestep) {
     //TODO: Write transition logic for client scene
-#pragma mark SOLUTION
-    _joingame.update(timestep);
-    if(_joingame.getBackClicked()){
-        _status = MENU;
-        _joingame.setActive(false);
-        _mainmenu.setActive(true);
-    }
-    else if (_network->getStatus() == NetEventController::Status::HANDSHAKE && _network->getShortUID()) {
-        _gameplay.init(_assets, _network, false);
-        _network->markReady();
-    }
-    else if (_network->getStatus() == NetEventController::Status::INGAME) {
-        _joingame.setActive(false);
-        _gameplay.setActive(true);
-        _status = GAME;
-    }
-    else if (_network->getStatus() == NetEventController::Status::NETERROR) {
-        _network->disconnect();
-		_joingame.setActive(false);
-		_mainmenu.setActive(true);
-        _gameplay.dispose();
-		_status = MENU;
-	}
+#pragma mark BEGIN SOLUTION
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }
 

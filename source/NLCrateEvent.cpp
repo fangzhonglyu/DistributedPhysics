@@ -23,9 +23,7 @@ std::shared_ptr<NetEvent> CrateEvent::newEvent(){
 std::shared_ptr<NetEvent> CrateEvent::allocCrateEvent(Vec2 pos){
     //TODO: make a new shared copy of the event and set its _pos to pos.
 #pragma mark BEGIN SOLUTION
-    auto event = std::make_shared<CrateEvent>();
-    event->_pos = pos;
-    return event;
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }
 
@@ -35,10 +33,7 @@ std::shared_ptr<NetEvent> CrateEvent::allocCrateEvent(Vec2 pos){
 std::vector<std::byte> CrateEvent::serialize(){
     //TODO: serialize _pos
 #pragma mark BEGIN SOLUTION
-    _serializer.reset();
-    _serializer.writeFloat(_pos.x);
-    _serializer.writeFloat(_pos.y);
-    return _serializer.serialize();
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }
 /**
@@ -55,10 +50,6 @@ void CrateEvent::deserialize(const std::vector<std::byte>& data){
     //NOTE: You might be tempted to write Vec2(_deserializer.readFloat(),_deserializer.readFloat()), however, C++ doesn't specify the order in which function arguments are evaluated, so you might end up with <y,x> instead of <x,y>.
     
 #pragma mark BEGIN SOLUTION
-    _deserializer.reset();
-    _deserializer.receive(data);
-    float x = _deserializer.readFloat();
-    float y = _deserializer.readFloat();
-    _pos = Vec2(x,y);
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }

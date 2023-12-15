@@ -147,20 +147,7 @@ void HostScene::setActive(bool value) {
          * TODO: if value is true, you need to activate the _backout button, and set the clicked variable to false. You need to also call the network controller to start a connection as a host. If the value is false, and reset all buttons and textfields to their original state.
          */
 #pragma mark BEGIN SOLUTION
-        if (value) {
-            _backout->activate();
-            _network->disconnect();
-            _network->connectAsHost();
-            _backClicked = false;
-        } else {
-            _gameid->setText("");
-            _startgame->deactivate();
-            updateText(_startgame, "INACTIVE");
-            _backout->deactivate();
-            // If any were pressed, reset them
-            _startgame->setDown(false);
-            _backout->setDown(false);
-        }
+        throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
     }
 }
@@ -197,18 +184,7 @@ void HostScene::update(float timestep) {
      * TODO: check for the status of `_network` (The NetworkController). If it is CONNECTED, you would need to update the scene nodes so that _gameId displays the id of the room (converted from hex to decimal) and _player displays the number of players. Additionally, you should check whether the `_startgame` button has been pressed and update its text. If it is not pressed yet, then its should display "Start Game" and be activated, otherwise, it should be deactivated and show "Starting".
      */
 #pragma mark BEGIN SOLUTION
-    if(_network->getStatus() == NetEventController::Status::CONNECTED){
-        if (!_startGameClicked) {
-            updateText(_startgame, "Start Game");
-            _startgame->activate();
-        }
-        else {
-            updateText(_startgame, "Starting");
-            _startgame->deactivate();
-        }
-		_gameid->setText(hex2dec(_network->getRoomID()));
-        _player->setText(std::to_string(_network->getNumPlayers()));
-	}
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }
 
@@ -218,7 +194,6 @@ void HostScene::update(float timestep) {
 void HostScene::startGame(){
     //TODO: call the network controller to start the game and set the _startGameClicked to true.
 #pragma mark BEGIN SOLUTION
-    _network->startGame();
-    _startGameClicked = true;
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }

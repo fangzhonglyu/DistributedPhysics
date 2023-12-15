@@ -147,24 +147,7 @@ std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode
     // NOTE: When an Obstacle is shared, function calls that change its state are monitored and automatically synchronized. However, every client calling this method is going to run the code above setting the properties. We don't want to share them redundantly, so sharing is turned on afterwards.
     
 #pragma mark BEGIN SOLUTION
-    auto crate = physics2::BoxObstacle::alloc(pos, boxSize);
-    
-    crate->setDebugColor(DYNAMIC_COLOR);
-    crate->setAngleSnap(0); // Snap to the nearest degree
-    
-    // Set the physics attributes
-    crate->setDensity(CRATE_DENSITY);
-    crate->setFriction(CRATE_FRICTION);
-    crate->setAngularDamping(CRATE_DAMPING);
-    crate->setRestitution(BASIC_RESTITUTION);
-
-    crate->setShared(true);
-    
-    auto sprite = scene2::PolygonNode::allocWithTexture(image);
-    sprite->setAnchor(Vec2::ANCHOR_CENTER);
-    sprite->setScale(0.5f);
-    
-    return std::make_pair(crate, sprite);
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }
 
@@ -174,11 +157,7 @@ std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode
 std::shared_ptr<std::vector<std::byte>> CrateFactory::serializeParams(Vec2 pos, float scale) {
     // TODO: Use _serializer to serialize pos and scale (remember to make a shared copy of the serializer reference, otherwise it will be lost if the serializer is reset).
 #pragma mark BEGIN SOLUTION
-    _serializer.reset();
-    _serializer.writeFloat(pos.x);
-    _serializer.writeFloat(pos.y);
-    _serializer.writeFloat(scale);
-    return std::make_shared<std::vector<std::byte>>(_serializer.serialize());
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }
 
@@ -188,13 +167,7 @@ std::shared_ptr<std::vector<std::byte>> CrateFactory::serializeParams(Vec2 pos, 
 std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> CrateFactory::createObstacle(const std::vector<std::byte>& params) {
     // TODO: Use _deserializer to deserialize byte vectors packed by {@link serializeParams()} and call the regular createObstacle() method with them.
 #pragma mark BEGIN SOLUTION
-    _deserializer.reset();
-    _deserializer.receive(params);
-    float x = _deserializer.readFloat();
-    float y = _deserializer.readFloat();
-    Vec2 pos = Vec2(x,y);
-    float scale = _deserializer.readFloat();
-    return createObstacle(pos, scale);
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }
 
@@ -336,18 +309,12 @@ bool GameScene::init(const std::shared_ptr<AssetManager>& assets, const Rect rec
      * TODO: Acquire the ownership of _cannon2 if this machine is not the host.
      */
 #pragma mark BEGIN SOLUTION
-    _network->enablePhysics(_world, linkSceneToObsFunc);
-    
-    if(!isHost){
-        _network->getPhysController()->acquireObs(_cannon2, 0);
-    }
-
-    _factId = _network->getPhysController()->attachFactory(_crateFact);
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 
-//TODO: For task 5, attach CrateEvent to the network controller
+    //TODO: For task 5, attach CrateEvent to the network controller
 #pragma mark BEGIN SOLUTION
-    _network->attachEventType<CrateEvent>();
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
     
     // XNA nostalgia
@@ -414,12 +381,7 @@ void GameScene::fireCrate() {
     //TODO: Add a new crate to the simulation using the addSharedObstacle() method from the physics controller, and set its velocity in the direction the cannon is aimed scaled by (50 * _input.getFirePower()).
     //HINT: You can use the serializedParams() method of the crate factory to help you serialize the parameters.
 #pragma mark BEGIN SOLUTION
-    auto cannon = _isHost ? _cannon1 : _cannon2;
-    auto params = _crateFact->serializeParams(cannon->getPosition(), _scale);
-    auto pair = _network->getPhysController()->addSharedObstacle(_factId, params);
-    float angle = cannon->getAngle() + M_PI_2;
-    Vec2 forward(SDL_cosf(angle), SDL_sinf(angle));
-    pair.first->setLinearVelocity(forward * 50 *_input.getFirePower());
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }
 
@@ -454,7 +416,7 @@ void GameScene::processCrateEvent(const std::shared_ptr<CrateEvent>& event){
     //TODO: add the crate and sprite to the simulation
     //NOTE: since both the host and client will receive a CrateEvent, we don't want to use addSharedObstacle() for it because it will create two separate crate. Instead you should use addInitObstacle(), which has the same top-bit id and if all clients called init obstacle the same amount of times, the same low-bit id. There is a potential race condition where multiple clients calling addInitObstacle() can cause id to be mixed up(clients send CrateEvent at the same time). In this lab, we will not address that race condition. But you could send along an obstacle id to ensure that all clients have that id for the obstacle.
 #pragma mark BEGIN SOLUTION
-    addInitObstacle(crate,sprite);
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
 }
 
@@ -647,10 +609,7 @@ void GameScene::preUpdate(float dt) {
     
 //TODO: if _input.didBigCrate(), allocate a crate event for the center of the screen(use DEFAULT_WIDTH/2 and DEFAULT_HEIGHT/2) and send it using the pushOutEvent() method in the network controller.
 #pragma mark BEGIN SOLUTION
-    if (_input.didBigCrate()){
-        CULog("BIG CRATE COMING");
-        _network->pushOutEvent(CrateEvent::allocCrateEvent(Vec2(DEFAULT_WIDTH/2,DEFAULT_HEIGHT/2)));
-    }
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
     
     float turnRate = _isHost ? DEFAULT_TURN_RATE : -DEFAULT_TURN_RATE;
@@ -668,13 +627,7 @@ void GameScene::fixedUpdate() {
     //Hint: You can check if ptr points to an object of class A using std::dynamic_pointer_cast<A>(ptr). You should always check isInAvailable() before popInEvent().
     
 #pragma mark BEGIN SOLUTION
-    if(_network->isInAvailable()){
-        auto e = _network->popInEvent();
-        if(auto crateEvent = std::dynamic_pointer_cast<CrateEvent>(e)){
-            CULog("BIG CRATE GOT");
-            processCrateEvent(crateEvent);
-        }
-    }
+    throw std::runtime_error("Unimplemented");
 #pragma mark END SOLUTION
     _world->update(FIXED_TIMESTEP_S);
 }
