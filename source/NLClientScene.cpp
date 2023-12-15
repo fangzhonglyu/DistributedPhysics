@@ -95,14 +95,17 @@ bool ClientScene::init(const std::shared_ptr<cugl::AssetManager>& assets, std::s
         }
     });
 
-/**
- * TODO: Add an exit listenser for the _gameId textfield that calls the network controller to connect as a client (Remember to convert the string from decimal to hex)
- */
-#pragma mark BEGIN SOLUTION
+
+
     _gameid->addExitListener([this](const std::string& name, const std::string& value) {
+    /**
+     * TODO: Call the network controller to connect as a client (Remember to convert the string from decimal to hex)
+     */
+#pragma mark BEGIN SOLUTION
         _network->connectAsClient(dec2hex(value));
-    });
 #pragma mark END SOLUTION
+    });
+
     
     // Create the server configuration
     auto json = _assets->get<JsonValue>("server");

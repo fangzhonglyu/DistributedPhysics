@@ -156,7 +156,7 @@ public:
      *
      * @return true if the reset button was pressed.
      */
-    bool didReset() const { return _resetPressed; }
+    bool didBigCrate() const { return _resetPressed; }
     
     /**
      * Returns true if the player wants to go toggle the debug mode.

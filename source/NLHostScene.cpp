@@ -144,15 +144,15 @@ void HostScene::setActive(bool value) {
         Scene2::setActive(value);
         
         /**
-         * TODO: if value is true, you need to activate the _backout button, and set the clicked variable to false. You need to also call the network controller to start a connection as a host. If the value is false, you should disconnect the network controller, and reset all buttons and textfields to their original state.
+         * TODO: if value is true, you need to activate the _backout button, and set the clicked variable to false. You need to also call the network controller to start a connection as a host. If the value is false, and reset all buttons and textfields to their original state.
          */
 #pragma mark BEGIN SOLUTION
         if (value) {
             _backout->activate();
+            _network->disconnect();
             _network->connectAsHost();
             _backClicked = false;
         } else {
-            _network->disconnect();
             _gameid->setText("");
             _startgame->deactivate();
             updateText(_startgame, "INACTIVE");

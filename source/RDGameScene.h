@@ -21,12 +21,11 @@
 #include <format>
 #include <string>
 #include <random>
-#include "RDRocketModel.h"
 #include "RDInput.h"
-#include "NetworkData.h"
-#include "RDNetwork.h"
+#include "NLCrateEvent.h"
 
 using namespace cugl::netphysics;
+using namespace cugl;
 
 /**
  * The factory class for crate objects.
@@ -38,7 +37,7 @@ using namespace cugl::netphysics;
 class CrateFactory : public cugl::netphysics::ObstacleFactory {
 public:
     /** Pointer to the AssetManager for texture access, etc. */
-    std::shared_ptr<AssetManager> _assets;
+    std::shared_ptr<cugl::AssetManager> _assets;
     /** Deterministic random generator for crate type */
     std::mt19937 _rand;
     /** Serializer for supporting parameters */
@@ -50,7 +49,6 @@ public:
      * Allocates a new instance of the factory using the given AssetManager.
      */
     static std::shared_ptr<CrateFactory> alloc(std::shared_ptr<AssetManager>& assets) {
-        // TODO: make a new CrateFactory object, call init() on it, and return it.
         auto f = std::make_shared<CrateFactory>();
         f->init(assets);
         return f;
@@ -72,28 +70,12 @@ public:
     /**
      * Helper method for converting normal parameters into byte vectors used for syncing.
      */
-    std::shared_ptr<std::vector<std::byte>> serializeParams(Vec2 pos, float scale) {
-        // TODO: Use _serializer to serialize pos and scale
-        _serializer.reset();
-        _serializer.writeFloat(pos.x);
-        _serializer.writeFloat(pos.y);
-        _serializer.writeFloat(scale);
-        return std::make_shared<std::vector<std::byte>>(_serializer.serialize());
-    }
+    std::shared_ptr<std::vector<std::byte>> serializeParams(Vec2 pos, float scale);
     
     /**
      * Generate a pair of Obstacle and SceneNode using serialized parameters.
      */
-    std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> createObstacle(const std::vector<std::byte>& params) override {
-        // TODO: Use _deserializer to deserialize byte vectors packed by {@link serializeParams()} and call the regular createObstacle() method with them.
-        _deserializer.reset();
-        _deserializer.receive(params);
-        float x = _deserializer.readFloat();
-        float y = _deserializer.readFloat();
-        Vec2 pos = Vec2(x,y);
-        float scale = _deserializer.readFloat();
-        return createObstacle(pos, scale);
-    }
+    std::pair<std::shared_ptr<physics2::Obstacle>, std::shared_ptr<scene2::SceneNode>> createObstacle(const std::vector<std::byte>& params) override;
 };
 
 /**
@@ -133,14 +115,12 @@ protected:
     Uint32 _factId;
 
     // Physics objects for the game
-    /** Reference to the goalDoor (for collision detection) */
-    std::shared_ptr<cugl::physics2::BoxObstacle> _goalDoor;
     /** Reference to the player1 cannon */
     std::shared_ptr<cugl::scene2::SceneNode> _cannon1Node;
-    std::shared_ptr<CannonModel> _cannon1;
+    std::shared_ptr<cugl::physics2::BoxObstacle> _cannon1;
     /** Reference to the player2 cannon */
     std::shared_ptr<cugl::scene2::SceneNode> _cannon2Node;
-    std::shared_ptr<CannonModel> _cannon2;
+    std::shared_ptr<cugl::physics2::BoxObstacle> _cannon2;
     
     /** Host is by default the left cannon */
     bool _isHost;
@@ -152,12 +132,12 @@ protected:
     
     std::shared_ptr<NetEventController> _network;
     
-    NetPhysicsController _itpr;
-
-    
 #pragma mark Internal Object Management
     
-    std::shared_ptr<cugl::physics2::BoxObstacle> addCrateAt(cugl::Vec2 pos, bool original);
+    /**
+     * This method adds a crate at the given position during the init process.
+     */
+    std::shared_ptr<cugl::physics2::Obstacle> addInitCrate(cugl::Vec2 pos);
     
     /**
      * Lays out the game geography.
@@ -170,7 +150,7 @@ protected:
      * This method is really, really long.  In practice, you would replace this
      * with your serialization loader, which would process a level file.
      */
-    void populate(bool isInit);
+    void populate();
     
     /**
      * Adds the physics object to the physics world and loosely couples it to the scene graph
@@ -184,13 +164,28 @@ protected:
      * param obj    The physics object to add
      * param node   The scene graph node to attach it to
      */
-    void addObstacle(const std::shared_ptr<cugl::physics2::Obstacle>& obj, 
+    void addInitObstacle(const std::shared_ptr<cugl::physics2::Obstacle>& obj, 
                      const std::shared_ptr<cugl::scene2::SceneNode>& node);
 
+    /**
+     * This method links a scene node to the obstacle.
+     *
+     * This method adds a listener so that the sceneNode will move along with the obstacle.
+     */
     void linkSceneToObs(const std::shared_ptr<cugl::physics2::Obstacle>& obj,
         const std::shared_ptr<cugl::scene2::SceneNode>& node);
     
+    /**
+     * This method adds a crate that had been fired by the player's cannon amid the simulation.
+     *
+     * If this machine is host, the crate should be fire from the left cannon (_cannon1), vice versa.
+     */
     void fireCrate();
+    
+    /**
+     * This method takes a crateEvent and processes it.
+     */
+    void processCrateEvent(const std::shared_ptr<CrateEvent>& event);
 
     /**
      * Returns the active screen size of this scene.

@@ -18,8 +18,8 @@ using namespace cugl;
 
 #pragma mark Input Constants
 
-/** The key to use for reseting the game */
-#define RESET_KEY KeyCode::R
+/** The key to use for sending a big crate in the game */
+#define RESET_KEY KeyCode::B
 /** The key for toggling the debug display */
 #define DEBUG_KEY KeyCode::D
 /** The key for exitting the game */
