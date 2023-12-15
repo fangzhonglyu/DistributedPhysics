@@ -1,6 +1,6 @@
 //
-//  RDGameScene.h
-//  Rocket Demo
+//  NLGameScene.h
+//  Networked Physics Demo
 //
 //  This is the most important class in this demo.  This class manages the
 //  gameplay for this demo.  It also handles collision detection. There is not
@@ -22,7 +22,7 @@
 //  Author: Walker White
 //  Version: 1/10/17
 //
-#include "RDGameScene.h"
+#include "NLGameScene.h"
 #include <box2d/b2_world.h>
 #include <box2d/b2_contact.h>
 #include <box2d/b2_collision.h>
@@ -86,8 +86,8 @@ float GOAL_POS[] = { 6, 12};
 #pragma mark Assset Constants
 /** The key for the earth texture in the asset manager */
 #define EARTH_TEXTURE       "earth"
-/** The key for the rocket texture in the asset manager */
-#define ROCK_TEXTURE        "rocket"
+/** The key for the cannon texture in the asset manager */
+#define CANNON_TEXTURE        "rocket"
 /** The key for the win door texture in the asset manager */
 #define GOAL_TEXTURE        "goal"
 /** The key prefix for the multiple crate assets */
@@ -462,7 +462,7 @@ void GameScene::processCrateEvent(const std::shared_ptr<CrateEvent>& event){
  * Lays out the game geography.
  *
  * Pay close attention to how we attach physics objects to a scene graph.
- * The simplest way is to make a subclass, like we do for the rocket.  However,
+ * The simplest way is to make a subclass.  However,
  * for simple objects you can just use a callback function to lightly couple
  * them.  This is what we do with the crates.
  *
@@ -547,7 +547,7 @@ void GameScene::populate() {
     }
         
 #pragma mark : Cannon
-    image  = _assets->get<Texture>(ROCK_TEXTURE);
+    image  = _assets->get<Texture>(CANNON_TEXTURE);
     _cannon1Node = scene2::PolygonNode::allocWithTexture(image);
     Size canSize(image->getSize()/_scale);
         
@@ -558,7 +558,7 @@ void GameScene::populate() {
     _cannon1->setDebugColor(DYNAMIC_COLOR);
     _cannon1->setSensor(true);
         
-    image  = _assets->get<Texture>(ROCK_TEXTURE);
+    image  = _assets->get<Texture>(CANNON_TEXTURE);
     _cannon2Node = scene2::PolygonNode::allocWithTexture(image);
     
     Vec2 canPos2 = ((Vec2)CAN2_POS);
@@ -597,8 +597,8 @@ void GameScene::linkSceneToObs(const std::shared_ptr<physics2::Obstacle>& obj,
  * Adds the physics object to the physics world and loosely couples it to the scene graph
  *
  * There are two ways to link a physics object to a scene graph node on the
- * screen.  One way is to make a subclass of a physics object, like we did 
- * with rocket.  The other is to use callback functions to loosely couple 
+ * screen.  One way is to make a subclass of a physics object.
+ * The other is to use callback functions to loosely couple
  * the two.  This function is an example of the latter.
  *
  * param obj    The physics object to add

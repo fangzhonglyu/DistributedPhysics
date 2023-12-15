@@ -1,6 +1,6 @@
 //
-//  RDApp.cpp
-//  Rocket Demo
+//  NLApp.cpp
+//  Networked Physics Demo
 //
 //  This is the root class for your game.  The file main.cpp accesses this class
 //  to run the application.  While you could put most of your game logic in
@@ -10,7 +10,7 @@
 //  Author: Walker White
 //  Version: 1/10/17
 //
-#include "RDApp.h"
+#include "NLApp.h"
 
 using namespace cugl;
 
@@ -28,7 +28,7 @@ using namespace cugl;
  * very last line.  This ensures that the state will transition to FOREGROUND,
  * causing the application to run.
  */
-void RocketApp::onStartup() {
+void NetApp::onStartup() {
     _assets = AssetManager::alloc();
     _batch  = SpriteBatch::alloc();
     
@@ -72,7 +72,7 @@ void RocketApp::onStartup() {
  * very last line.  This ensures that the state will transition to NONE,
  * causing the application to be deleted.
  */
-void RocketApp::onShutdown() {
+void NetApp::onShutdown() {
     _gameplay.dispose();
     _mainmenu.dispose();
     _hostgame.dispose();
@@ -102,7 +102,7 @@ void RocketApp::onShutdown() {
  * Otherwise, the audio thread may persist while the application is in
  * the background.
  */
-void RocketApp::onSuspend() {
+void NetApp::onSuspend() {
     AudioEngine::get()->pause();
 }
 
@@ -116,7 +116,7 @@ void RocketApp::onSuspend() {
  * If you are using audio, you should use this method to resume any audio
  * paused before app suspension.
  */
-void RocketApp::onResume() {
+void NetApp::onResume() {
     AudioEngine::get()->resume();
 }
 
@@ -126,7 +126,7 @@ void RocketApp::onResume() {
 
 #if USING_PHYSICS
 
-void RocketApp::preUpdate(float timestep){
+void NetApp::preUpdate(float timestep){
     if (_status == LOAD && _loading.isActive()) {
         _loading.update(0.01f);
     }
@@ -159,13 +159,13 @@ void RocketApp::preUpdate(float timestep){
     }
 }
 
-void RocketApp::postUpdate(float timestep) {
+void NetApp::postUpdate(float timestep) {
     if (_status == GAME) {
         _gameplay.postUpdate(timestep);
     }
 }
 
-void RocketApp::fixedUpdate() {
+void NetApp::fixedUpdate() {
     if (_status == GAME) {
         _gameplay.fixedUpdate();
     }
@@ -185,7 +185,7 @@ void RocketApp::fixedUpdate() {
  *
  * @param timestep  The amount of time (in seconds) since the last frame
  */
-void RocketApp::update(float timestep) {
+void NetApp::update(float timestep) {
     //deprecated
 }
 #endif
@@ -198,7 +198,7 @@ void RocketApp::update(float timestep) {
  *
  * @param timestep  The amount of time (in seconds) since the last frame
  */
-void RocketApp::updateMenuScene(float timestep) {
+void NetApp::updateMenuScene(float timestep) {
     _mainmenu.update(timestep);
     switch (_mainmenu.getChoice()) {
         case MenuScene::Choice::HOST:
@@ -225,7 +225,7 @@ void RocketApp::updateMenuScene(float timestep) {
  *
  * @param timestep  The amount of time (in seconds) since the last frame
  */
-void RocketApp::updateHostScene(float timestep) {
+void NetApp::updateHostScene(float timestep) {
     _hostgame.update(timestep);
     if(_hostgame.getBackClicked()){
         _status = MENU;
@@ -258,8 +258,8 @@ void RocketApp::updateHostScene(float timestep) {
  *
  * @param timestep  The amount of time (in seconds) since the last frame
  */
-void RocketApp::updateClientScene(float timestep) {
-    //TODO: write transition logic for client scene
+void NetApp::updateClientScene(float timestep) {
+    //TODO: Write transition logic for client scene
 #pragma mark SOLUTION
     _joingame.update(timestep);
     if(_joingame.getBackClicked()){
@@ -295,7 +295,7 @@ void RocketApp::updateClientScene(float timestep) {
  * When overriding this method, you do not need to call the parent method
  * at all. The default implmentation does nothing.
  */
-void RocketApp::draw() {
+void NetApp::draw() {
     switch (_status) {
         case LOAD:
             _loading.render(_batch);

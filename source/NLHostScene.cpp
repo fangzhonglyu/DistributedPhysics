@@ -216,6 +216,7 @@ void HostScene::update(float timestep) {
  * This method prompts the network controller to start the game.
  */
 void HostScene::startGame(){
+    //TODO: call the network controller to start the game and set the _startGameClicked to true.
 #pragma mark BEGIN SOLUTION
     _network->startGame();
     _startGameClicked = true;

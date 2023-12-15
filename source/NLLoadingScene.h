@@ -1,6 +1,6 @@
 //
-//  RDLoadingScene.h
-//  Rocket Demo
+//  NLLoadingScene.h
+//  Networked Physics Demo
 //
 //  This module provides a very barebones loading screen.  Most of the time you
 //  will not need a loading screen, because the assets will load so fast.  But
@@ -12,8 +12,8 @@
 //  Author: Walker White
 //  Version: 1/10/17
 //
-#ifndef __RD_LOADING_SCENE_H__
-#define __RD_LOADING_SCENE_H__
+#ifndef __NL_LOADING_SCENE_H__
+#define __NL_LOADING_SCENE_H__
 #include <cugl/cugl.h>
 
 
@@ -115,4 +115,4 @@ public:
 };
 
 
-#endif /* __RD_LOADING_SCENE_H__ */
+#endif /* __NL_LOADING_SCENE_H__ */

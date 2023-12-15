@@ -1,5 +1,5 @@
 //
-//  RDGameScene.h
+//  NLGameScene.h
 //  Networked Crate Demo
 //
 //  This is a demo based on the original Rocket Demo, this demo is made in
@@ -13,15 +13,15 @@
 //  Author: Walker White
 //  Version: 1/10/17
 //
-#ifndef __RD_GAME_SCENE_H__
-#define __RD_GAME_SCENE_H__
+#ifndef __NL_GAME_SCENE_H__
+#define __NL_GAME_SCENE_H__
 #include <cugl/cugl.h>
 #include <box2d/b2_world_callbacks.h>
 #include <vector>
 #include <format>
 #include <string>
 #include <random>
-#include "RDInput.h"
+#include "NLInput.h"
 #include "NLCrateEvent.h"
 
 using namespace cugl::netphysics;
@@ -92,7 +92,7 @@ protected:
     
     // CONTROLLERS
     /** Controller for abstracting out input across multiple platforms */
-    RocketInput _input;
+    NetLabInput _input;
     
     // VIEW
     /** Reference to the physics root of the scene graph */
@@ -143,7 +143,7 @@ protected:
      * Lays out the game geography.
      *
      * Pay close attention to how we attach physics objects to a scene graph.
-     * The simplest way is to make a subclass, like we do for the rocket.  However,
+     * The simplest way is to make a subclass. However,
      * for simple objects you can just use a callback function to lightly couple
      * them.  This is what we do with the crates.
      *
@@ -156,8 +156,8 @@ protected:
      * Adds the physics object to the physics world and loosely couples it to the scene graph
      *
      * There are two ways to link a physics object to a scene graph node on the
-     * screen.  One way is to make a subclass of a physics object, like we did
-     * with rocket.  The other is to use callback functions to loosely couple
+     * screen.  One way is to make a subclass of a physics object.
+     * The other is to use callback functions to loosely couple
      * the two.  This function is an example of the latter.
      * the two.  This function is an example of the latter.
      *
@@ -368,4 +368,4 @@ public:
     void beforeSolve(b2Contact* contact, const b2Manifold* oldManifold);
 };
 
-#endif /* __RD_GAME_MODE_H__ */
+#endif /* __NL_GAME_SCENE_H__ */

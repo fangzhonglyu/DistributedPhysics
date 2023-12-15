@@ -1,6 +1,6 @@
 //
-//  RDInput.cpp
-//  Rocket Demo
+//  NLInput.cpp
+//  Networked Physics Demo
 //
 //  This input controller is primarily designed for keyboard control.  On mobile
 //  you will notice that we use gestures to emulate keyboard commands. They even
@@ -12,7 +12,7 @@
 //  Author: Walker White
 //  Version: 1/10/17
 //
-#include "RDInput.h"
+#include "NLInput.h"
 
 using namespace cugl;
 
@@ -49,7 +49,7 @@ using namespace cugl;
  * This constructor does NOT do any initialzation.  It simply allocates the
  * object. This makes it safe to use this class without a pointer.
  */
-RocketInput::RocketInput() :
+NetLabInput::NetLabInput() :
 _active(false),
 _resetPressed(false),
 _debugPressed(false),
@@ -71,7 +71,7 @@ _vertical(0.0f) {
  * This method will not dispose of the input controller. It can be reused
  * once it is reinitialized.
  */
-void RocketInput::dispose() {
+void NetLabInput::dispose() {
     if (_active) {
 #ifndef CU_TOUCH_SCREEN
         Input::deactivate<Keyboard>();
@@ -94,7 +94,7 @@ void RocketInput::dispose() {
  *
  * @return true if the controller was initialized successfully
  */
-bool RocketInput::init() {
+bool NetLabInput::init() {
     _timestamp.mark();
     bool success = true;
     
@@ -126,7 +126,7 @@ bool RocketInput::init() {
  * the OS, we may see multiple updates of the same touch in a single animation
  * frame, so we need to accumulate all of the data together.
  */
-void RocketInput::update(float dt) {
+void NetLabInput::update(float dt) {
     int left = false;
     int rght = false;
     int up   = false;
@@ -217,7 +217,7 @@ void RocketInput::update(float dt) {
 /**
  * Clears any buffered inputs so that we may start fresh.
  */
-void RocketInput::clear() {
+void NetLabInput::clear() {
     _resetPressed = false;
     _debugPressed = false;
     _exitPressed  = false;
@@ -238,7 +238,7 @@ void RocketInput::clear() {
  * @param t     The touch information
  * @param event The associated event
  */
-void RocketInput::touchBeganCB(const cugl::TouchEvent& event, bool focus) {
+void NetLabInput::touchBeganCB(const cugl::TouchEvent& event, bool focus) {
     // All touches correspond to key up
     _keyUp = true;
     _keyFired = false;
@@ -253,7 +253,7 @@ void RocketInput::touchBeganCB(const cugl::TouchEvent& event, bool focus) {
  * @param t     The touch information
  * @param event The associated event
  */
-void RocketInput::touchEndedCB(const cugl::TouchEvent& event, bool focus) {
+void NetLabInput::touchEndedCB(const cugl::TouchEvent& event, bool focus) {
     // Gesture has ended.  Give it meaning.
     Vec2 diff = event.position-_dtouch;
     bool fast = (event.timestamp.ellapsedMillis(_timestamp) < EVENT_SWIPE_TIME);

@@ -1,6 +1,6 @@
 //
-//  RDApp.h
-//  Rocket Demo
+//  NLApp.h
+//  Networked Physics Demo
 //  This is the root class for your game.  The file main.cpp accesses this class
 //  to run the application.  While you could put most of your game logic in
 //  this class, we prefer to break the game up into player modes and have a
@@ -11,11 +11,11 @@
 //  Author: Walker White
 //  Version: 1/10/17
 //
-#ifndef __RD_APP_H__
-#define __RD_APP_H__
+#ifndef __NL_APP_H__
+#define __NL_APP_H__
 #include <cugl/cugl.h>
-#include "RDGameScene.h"
-#include "RDLoadingScene.h"
+#include "NLGameScene.h"
+#include "NLLoadingScene.h"
 #include "NLMenuScene.h"
 #include "NLClientScene.h"
 #include "NLHostScene.h"
@@ -25,7 +25,7 @@ using namespace cugl::netphysics;
 /**
  * This class represents the application root for the ship demo.
  */
-class RocketApp : public cugl::Application {
+class NetApp : public cugl::Application {
     
 enum Status {
     LOAD,
@@ -71,7 +71,7 @@ public:
      * of initialization from the constructor allows main.cpp to perform
      * advanced configuration of the application before it starts.
      */
-    RocketApp() : cugl::Application(), _loaded(false) {}
+    NetApp() : cugl::Application(), _loaded(false) {}
     
     /**
      * Disposes of this application, releasing all resources.
@@ -80,7 +80,7 @@ public:
      * It simply calls the dispose() method in Application.  There is nothing
      * special to do here.
      */
-    ~RocketApp() { }
+    ~NetApp() { }
     
     
 #pragma mark Application State
@@ -201,4 +201,4 @@ public:
      */
     virtual void draw() override;
 };
-#endif /* __RD_APP_H__ */
+#endif /* __NL_APP_H__ */

@@ -1,6 +1,6 @@
 //
-//  RDInput.h
-//  Rocket Demo
+//  NLInput.h
+//  Networked Physics Demo
 //
 //  This input controller is primarily designed for keyboard control.  On mobile
 //  you will notice that we use gestures to emulate keyboard commands. They even
@@ -12,12 +12,12 @@
 //  Author: Walker White
 //  Version: 1/10/17
 //
-#ifndef __RD_INPUT_H__
-#define __RD_INPUT_H__
+#ifndef __NL_INPUT_H__
+#define __NL_INPUT_H__
 #include <cugl/cugl.h>
 
 /**
- * This class represents player input in the rocket demo.
+ * This class represents player input in the Networked Physics demo.
  *
  * This input handler uses the CUGL input API.  It uses the polling API for
  * keyboard, but the callback API for touch.  This demonstrates a mix of ways
@@ -32,7 +32,7 @@
  * until later. This is one of the main reasons we like to avoid initialization
  * in the constructor.
  */
-class RocketInput {
+class NetLabInput {
 private:
     /** Whether or not this input is active */
     bool _active;
@@ -82,12 +82,12 @@ public:
      * This constructor does NOT do any initialzation.  It simply allocates the
      * object. This makes it safe to use this class without a pointer.
      */
-    RocketInput(); // Don't initialize.  Allow stack based
+    NetLabInput(); // Don't initialize.  Allow stack based
     
     /**
      * Disposes of this input controller, releasing all listeners.
      */
-    ~RocketInput() { dispose(); }
+    ~NetLabInput() { dispose(); }
     
     /**
      * Deactivates this input controller, releasing all listeners.
@@ -202,4 +202,4 @@ public:
 
 };
 
-#endif /* __RD_INPUT_H__ */
+#endif /* __NL_INPUT_H__ */

@@ -28,7 +28,7 @@
 //  Version: 7/1/16
 
 // Include your application class
-#include "RDApp.h"
+#include "NLApp.h"
 
 using namespace cugl;
 
@@ -43,10 +43,10 @@ using namespace cugl;
  */
 int main(int argc, char * argv[]) {
     // Change this to your application class
-    RocketApp app;
+    NetApp app;
     
     // Set the properties of your application
-    app.setName("Rocket Demo");
+    app.setName("Networked Physics Demo");
     app.setOrganization("GDIAC");
     app.setHighDPI(true);
 

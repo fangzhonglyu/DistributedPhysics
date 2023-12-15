@@ -1,6 +1,6 @@
 //
-//  RDLoadingScene.cpp
-//  Rocket Demo
+//  NLLoadingScene.cpp
+//  Networked Physics Demo
 //
 //  This module provides a very barebones loading screen.  Most of the time you
 //  will not need a loading screen, because the assets will load so fast.  But
@@ -14,7 +14,7 @@
 //  Author: Walker White
 //  Version: 1/10/17
 //
-#include "RDLoadingScene.h"
+#include "NLLoadingScene.h"
 
 using namespace cugl;
 
